@@ -186,7 +186,12 @@ let generateBatchOfMockTransactionsAndPushToMempool = async() => {
 
 }
 
-setInterval(generateBatchOfMockTransactionsAndPushToMempool,2000)
+
+if(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY === '9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK'){
+
+    setInterval(generateBatchOfMockTransactionsAndPushToMempool,2000)
+
+}
 
 
 
