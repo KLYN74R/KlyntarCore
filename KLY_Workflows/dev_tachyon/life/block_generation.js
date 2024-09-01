@@ -213,7 +213,7 @@ let getAggregatedLeaderRotationProof = async (epochHandler,pubKeyOfOneOfPrevious
     
             // No sense to get finalization proof again if we already have
 
-            if(lrpsCacheForLeader.has(pubKeyOfQuorumMember)) continue
+            if(lrpsCacheForLeader[pubKeyOfQuorumMember]) continue
 
             let connection = currentEpochMetadata.TEMP_CACHE.get('WS:'+pubKeyOfQuorumMember)
 
