@@ -281,7 +281,7 @@ let setGenesisToState=async()=>{
         WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey] = {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
 
 
-        //Create the appropriate storage for pre-set pools. We'll create the simplest variant - but pools will have ability to change it via txs during the chain work
+        // Create the appropriate storage for pre-set pools. We'll create the simplest variant - but pools will have ability to change it via txs during the chain work
         
         let contractMetadataTemplate = {
 
@@ -381,15 +381,15 @@ let setGenesisToState=async()=>{
 
     //_______________________ Now add the data to state _______________________
 
-    // * Each account / contract must have <shard> property to assign it to appropriate shard
+    for(let [shardID, collectionOfAccountsToBindToShard] of Object.entries(BLOCKCHAIN_GENESIS.STATE)){
 
-    Object.keys(BLOCKCHAIN_GENESIS.STATE).forEach(
-    
-        addressOrContractID => {
+        // Now iterate over objects
 
-            if(BLOCKCHAIN_GENESIS.STATE[addressOrContractID].type==='contract'){
+        for(let [accountID, accountData] of Object.entries(collectionOfAccountsToBindToShard)){
 
-                let {lang,balance,uno,gas,storages,bytecode,storageAbstractionLastPayment,shard} = BLOCKCHAIN_GENESIS.STATE[addressOrContractID]
+            if(accountData.type === 'contract'){
+
+                let {lang,balance,uno,gas,storages,bytecode,storageAbstractionLastPayment,shard} = accountData
 
                 let contractMeta = {
 
@@ -406,43 +406,42 @@ let setGenesisToState=async()=>{
 
                 // Write metadata first
                 
-                verificationThreadAtomicBatch.put(shard+':'+addressOrContractID,contractMeta)
+                verificationThreadAtomicBatch.put(shardID+':'+accountID,contractMeta)
 
-                // Finally - write genesis storage of contract sharded by contractID_STORAGE_ID => {}(object)
+                // Finally - write genesis storage of contract
 
-                for(let storageID of BLOCKCHAIN_GENESIS.STATE[addressOrContractID].storages){
+                for(let storageID of storages){
 
-                    verificationThreadAtomicBatch.put(shard+':'+addressOrContractID+'_STORAGE_'+storageID,BLOCKCHAIN_GENESIS.STATE[addressOrContractID][storageID])
+                    verificationThreadAtomicBatch.put(shard+':'+accountID+'_STORAGE_'+storageID,accountData[storageID])
 
                 }
+
 
             } else {
 
                 // Else - it's default EOA account
 
-                let shardID = BLOCKCHAIN_GENESIS.STATE[addressOrContractID].shard
-
-                verificationThreadAtomicBatch.put(shardID+':'+addressOrContractID,BLOCKCHAIN_GENESIS.STATE[addressOrContractID])
+                verificationThreadAtomicBatch.put(shardID+':'+accountID,accountData)
 
             }
-
+ 
         }
-        
-    )
+
+    }
 
 
     /*
     
-    Set the initial workflow version from genesis
+        Set the initial workflow version from genesis
 
-    We keep the official semver notation x.y.z(major.minor.patch)
+        We keep the official semver notation x.y.z(major.minor.patch)
 
-    You can't continue to work if QUORUM and major part of POOLS decided to vote for major update.
+        You can't continue to work if QUORUM and major part of POOLS decided to vote for major update.
     
-    However, if workflow_version has differences in minor or patch values - you can continue to work
+        However, if workflow_version has differences in minor or patch values - you can continue to work
 
 
-    KLYNTAR threads holds only MAJOR version(VERIFICATION_THREAD and APPROVEMENT_THREAD) because only this matter
+        KLYNTAR threads holds only MAJOR version(VERIFICATION_THREAD and APPROVEMENT_THREAD) because only this matter
 
     */
 

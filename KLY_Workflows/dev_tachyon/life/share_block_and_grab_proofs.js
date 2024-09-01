@@ -56,11 +56,7 @@ let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
                             let proofsGrabber = TEMP_CACHE.get('PROOFS_GRABBER')
 
 
-                            if(parsedData.route === 'get_leader_rotation_proof'){
-
-
-                                console.log('DEBUG: Accepted LRP => ',parsedData)
-                                
+                            if(parsedData.route === 'get_leader_rotation_proof'){                                
 
                                 
                             /*                                

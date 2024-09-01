@@ -90,9 +90,7 @@ let postQuantumBlissKeypair = {
 
 let nonces = {};
 
-let generateBatchOfMockTransactionsAndPushToMempool = async() => {
-
-    const shardID = 'shard_0';
+let generateBatchOfMockTransactionsAndPushToMempool = async shardID => {
 
     const recipient = 'nXSYHp74u88zKPiRi7t22nv4WCBHXUBpGrVw3V93f2s';
 
@@ -424,7 +422,7 @@ let generateBlocksPortion = async() => {
 
     if(typeof canGenerateBlocksNow === 'string'){
 
-        generateBatchOfMockTransactionsAndPushToMempool()
+        generateBatchOfMockTransactionsAndPushToMempool(myShardForThisEpoch)
 
         // Check if <epochFullID> is the same in APPROVEMENT_THREAD and in GENERATION_THREAD
 
@@ -517,10 +515,7 @@ let generateBlocksPortion = async() => {
             for(let pubKeyOfPreviousLeader of pubKeysOfAllThePreviousPools){
 
                 let aggregatedLeaderRotationProof = await getAggregatedLeaderRotationProof(epochHandler,pubKeyOfPreviousLeader,indexOfPreviousLeaderInSequence,myShardForThisEpoch).catch(()=>null)
-
-                console.log('DEBUG: Try to get ALRP => ',aggregatedLeaderRotationProof)
                 
-
                 if(aggregatedLeaderRotationProof){
 
                     extraData.aggregatedLeadersRotationProofs[pubKeyOfPreviousLeader] = aggregatedLeaderRotationProof
