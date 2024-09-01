@@ -236,7 +236,7 @@ export let checkAlrpChainValidity = async (firstBlockInThisEpochByPool,leadersSe
 
         let arrayIndexer = 0
 
-        let wasBreakedEarly = false
+        let bumpedWithPoolWhoCreatedAtLeastOneBlock = false
 
 
         for(let poolPubKey of arrayForIteration){
@@ -263,7 +263,7 @@ export let checkAlrpChainValidity = async (firstBlockInThisEpochByPool,leadersSe
 
                     if(alrpForThisPool.skipIndex>=0){
 
-                        wasBreakedEarly = true
+                        bumpedWithPoolWhoCreatedAtLeastOneBlock = true
 
                         break
 
@@ -275,7 +275,8 @@ export let checkAlrpChainValidity = async (firstBlockInThisEpochByPool,leadersSe
     
         }
 
-        if(arrayIndexer === position && !wasBreakedEarly){
+        // Returns true only in case if we checked ALRPs for all the previous pools in leaders sequence or untill the pool who created at least one block
+        if(arrayIndexer === position || bumpedWithPoolWhoCreatedAtLeastOneBlock){
             
             return {isOK:true,infoAboutFinalBlocksInThisEpoch}
 
@@ -284,6 +285,7 @@ export let checkAlrpChainValidity = async (firstBlockInThisEpochByPool,leadersSe
     } else return {isOK:false}
 
 }
+
 
 
 
