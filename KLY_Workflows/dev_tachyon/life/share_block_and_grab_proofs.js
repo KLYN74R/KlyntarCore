@@ -23,7 +23,7 @@ let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
 
     // Now we can open required WebSocket connections with quorums majority
 
-    let {FINALIZATION_PROOFS,TEMP_CACHE} = currentEpochMetadata
+    let {FINALIZATION_PROOFS,FINALIZATION_STATS,TEMP_CACHE} = currentEpochMetadata
 
     let epochFullID = epochHandler.hash + "#" + epochHandler.id
 
@@ -147,10 +147,9 @@ let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
                                 
                                 
                                         if(typeof afp === 'object' && hash === afp.blockHash && blockIdInAfp === afp.blockID && await verifyAggregatedFinalizationProof(afp,epochHandler)){
-                                
-                                            // If signature is ok and index is bigger than we have - update the <skipData> in our local skip handler
 
-                                            let localFinalizationStatsForThisPool = currentEpochMetadata.FINALIZATION_STATS.get(parsedData.forPoolPubkey) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+
+                                            let localFinalizationStatsForThisPool = FINALIZATION_STATS.get(parsedData.forPoolPubkey) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
                                  
                                             if(localFinalizationStatsForThisPool.index < index){
                                                  
@@ -166,11 +165,11 @@ let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
                             
                                                 // Store the updated version of finalization stats
                         
-                                                currentEpochMetadata.FINALIZATION_STATS.set(parsedData.forPoolPubkey,localFinalizationStatsForThisPool)                    
+                                                FINALIZATION_STATS.set(parsedData.forPoolPubkey,localFinalizationStatsForThisPool)                    
                             
                                                 // If our local version had lower index - clear grabbed signatures to repeat grabbing process again, with bigger block height
                                 
-                                                localMetadataForPotentialAlrp.proofs = {}
+                                                TEMP_CACHE.delete(`LRPS:${parsedData.forPoolPubkey}`)
                                 
                                             }
                                 
