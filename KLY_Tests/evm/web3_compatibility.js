@@ -7,7 +7,7 @@ import Web3 from 'web3'
 //___________________________________ CONSTANTS POOL ___________________________________
 
 
-const web3 = new Web3('http://localhost:7332/kly_evm_rpc/9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK')
+const web3 = new Web3('http://localhost:7336/kly_evm_rpc/shard_0')
 
 // KLY-EVM
 const common = Common.custom({name:'KLYNTAR',networkId:'0x1CA3',chainId:'0x1CA3'},{hardfork:'london'})
@@ -131,7 +131,7 @@ let EVM_DEFAULT_TX = async() => {
 }
 
 
-// EVM_DEFAULT_TX()
+EVM_DEFAULT_TX()
 
 
 // web3.eth.getTransactionReceipt('0x0416afec24bb8010e39a79663c695fdfdf26576fd1605cfcddec7a7c9611da8d',(err,txReceipt)=>console.log(txReceipt))

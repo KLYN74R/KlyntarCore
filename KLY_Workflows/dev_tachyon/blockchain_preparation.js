@@ -28,7 +28,7 @@ let resolveDatabase = name => level(process.env.CHAINDATA_PATH+`/${name}`,{value
 
 export let NODE_METADATA = {
 
-    CORE_MAJOR_VERSION:+(fs.readFileSync(pathResolve('../../../../../../../KLY_Workflows/dev_tachyon/version.txt')).toString()), // major version of core. In case network decides to add modification, fork is created & software should be updated
+    CORE_MAJOR_VERSION:+(fs.readFileSync('/home/vladartem/KlyntarCore/KLY_Workflows/dev_tachyon/version.txt').toString()), // major version of core. In case network decides to add modification, fork is created & software should be updated
     
     MEMPOOL:[], // to hold onchain transactions here(contract calls,txs,delegations and so on)
 
