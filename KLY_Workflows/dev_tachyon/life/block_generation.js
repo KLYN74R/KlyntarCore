@@ -385,7 +385,7 @@ let generateBlocksPortion = async() => {
 
     let proofsGrabber = currentEpochMetadata.TEMP_CACHE.get('PROOFS_GRABBER')
 
-    if(proofsGrabber && WORKING_THREADS.GENERATION_THREAD.nextIndex > proofsGrabber.acceptedIndex+1) return
+    if(proofsGrabber && WORKING_THREADS.GENERATION_THREAD.epochFullId === epochFullID && WORKING_THREADS.GENERATION_THREAD.nextIndex > proofsGrabber.acceptedIndex+1) return
 
     //_________________ Once we moved to new epoch - check the shard where this validator was assigned _________________
 
