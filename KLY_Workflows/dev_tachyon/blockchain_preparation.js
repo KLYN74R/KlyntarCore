@@ -16,6 +16,23 @@ import Web3 from 'web3'
 
 import fs from 'fs'
 
+import os from 'os'
+
+
+// !!!!!!!! FOR TEST ONLY !!!!!!!!
+
+const platform = os.platform();
+
+let versionFilePath
+
+
+
+if (platform === 'win32' || platform === 'darwin') {
+    
+    versionFilePath = '../../../../../../../KLY_Workflows/dev_tachyon/version.txt'
+
+} else versionFilePath = '/home/vladartem/KlyntarCore/KLY_Workflows/dev_tachyon/version.txt'
+
 
 
 
@@ -28,7 +45,7 @@ let resolveDatabase = name => level(process.env.CHAINDATA_PATH+`/${name}`,{value
 
 export let NODE_METADATA = {
 
-    CORE_MAJOR_VERSION:+(fs.readFileSync('/home/vladartem/KlyntarCore/KLY_Workflows/dev_tachyon/version.txt').toString()), // major version of core. In case network decides to add modification, fork is created & software should be updated
+    CORE_MAJOR_VERSION:+(fs.readFileSync(versionFilePath).toString()), // major version of core. In case network decides to add modification, fork is created & software should be updated
     
     MEMPOOL:[], // to hold onchain transactions here(contract calls,txs,delegations and so on)
 
