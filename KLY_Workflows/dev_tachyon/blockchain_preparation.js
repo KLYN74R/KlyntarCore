@@ -29,7 +29,7 @@ let versionFilePath
 
 if (platform === 'win32' || platform === 'darwin') {
     
-    versionFilePath = '../../../../../../../KLY_Workflows/dev_tachyon/version.txt'
+    versionFilePath = pathResolve('../../../../../../../KLY_Workflows/dev_tachyon/version.txt')
 
 } else versionFilePath = '/home/vladartem/KlyntarCore/KLY_Workflows/dev_tachyon/version.txt'
 

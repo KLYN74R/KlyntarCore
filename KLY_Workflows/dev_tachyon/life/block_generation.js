@@ -276,7 +276,6 @@ let getAggregatedLeaderRotationProof = async (epochHandler,pubKeyOfOneOfPrevious
 
 
     // Prepare the template that we're going to send to quorum to get the ALRP
-    // Send payload to => POST /leader_rotation_proof
 
     let firstBlockIDByThisLeader = epochHandler.id+':'+pubKeyOfOneOfPreviousLeader+':0' // epochID:PubKeyOfCreator:0 - first block in epoch
 

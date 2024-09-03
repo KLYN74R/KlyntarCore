@@ -6,9 +6,9 @@ import {getPseudoRandomSubsetFromQuorumByTicketId} from '../../common_functions/
 
 import {signEd25519, verifyEd25519, logColors, customLog} from '../../../../KLY_Utils/utils.js'
 
-import {useTemporaryDb} from '../../common_functions/approvement_thread_related.js'
-
 import {checkAlrpChainValidity, getBlock} from '../../verification_process/verification.js'
+
+import {useTemporaryDb} from '../../common_functions/approvement_thread_related.js'
 
 import {CONFIGURATION} from '../../../../klyn74r.js'
 
@@ -603,7 +603,7 @@ let returnBlocksRange = async(data,connection)=>{
 
 
 
-let returnLeaderRotationProofForSetOfLeaders = async(requestForLeaderRotationProof,connection)=>{
+let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=>{
 
     /*
 
@@ -952,7 +952,7 @@ klyntarWebsocketServer.on('request',request=>{
 
             }else if(data.route==='get_leader_rotation_proof'){
 
-                returnLeaderRotationProofForSetOfLeaders(data,connection)
+                returnLeaderRotationProof(data,connection)
 
             }
 

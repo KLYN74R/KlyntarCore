@@ -212,9 +212,9 @@ export let getFirstBlockOnEpoch = async(epochHandler,shardID,getBlockFunction) =
 
     let pivotShardID = `${epochHandler.id}:${shardID}`
 
-    let pivotPoolData = GLOBAL_CACHES.STUFF_CACHE.get(pivotShardID) // {position,pivotPubKey,firstBlockByPivot,firstBlockHash}
+    let pivotShardData = GLOBAL_CACHES.STUFF_CACHE.get(pivotShardID) // {position,pivotPubKey,firstBlockByPivot,firstBlockHash}
 
-    if(!pivotPoolData){
+    if(!pivotShardData){
 
         let arrayOfPoolsForShard = epochHandler.leadersSequence[shardID]
         
@@ -258,10 +258,10 @@ export let getFirstBlockOnEpoch = async(epochHandler,shardID,getBlockFunction) =
     }
 
     
-    pivotPoolData = GLOBAL_CACHES.STUFF_CACHE.get(pivotShardID)
+    pivotShardData = GLOBAL_CACHES.STUFF_CACHE.get(pivotShardID)
 
 
-    if(pivotPoolData){
+    if(pivotShardData){
 
         // In pivot we have first block created in epoch by some pool
 
@@ -269,12 +269,12 @@ export let getFirstBlockOnEpoch = async(epochHandler,shardID,getBlockFunction) =
 
         // Based on ALRP in pivot block - find the real first block
 
-        let blockToEnumerateAlrp = pivotPoolData.firstBlockByPivot
+        let blockToEnumerateAlrp = pivotShardData.firstBlockByPivot
 
         let arrayOfPoolsForShard = epochHandler.leadersSequence[shardID]
 
 
-        for(let position = pivotPoolData.position-1 ; position >= 0 ; position--){
+        for(let position = pivotShardData.position-1 ; position >= 0 ; position--){
         
             let previousPoolInLeadersSequence = arrayOfPoolsForShard[position]
     
@@ -289,7 +289,7 @@ export let getFirstBlockOnEpoch = async(epochHandler,shardID,getBlockFunction) =
 
                     GLOBAL_CACHES.STUFF_CACHE.delete(pivotShardID)
 
-                    return {firstBlockCreator:pivotPoolData.pivotPubKey,firstBlockHash:pivotPoolData.firstBlockHash}
+                    return {firstBlockCreator:pivotShardData.pivotPubKey,firstBlockHash:pivotShardData.firstBlockHash}
 
                 }
 

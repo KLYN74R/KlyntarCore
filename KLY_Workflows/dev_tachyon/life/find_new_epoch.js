@@ -351,8 +351,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
             }
 
             
-            //___________________ Here we should have understanding of first block for each shard on this epoch __________________________
-
+           
             if(epochCache[shardID].firstBlockOnShardFound && epochCache[shardID].aefp) totalNumberOfReadyShards++
 
             if(!epochCache[shardID].firstBlockHash) epochCache[shardID] = {}
