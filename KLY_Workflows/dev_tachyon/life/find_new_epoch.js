@@ -2,7 +2,7 @@ import {GRACEFUL_STOP, BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES, EPO
 
 import {getCurrentEpochQuorum, getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
-import {getFirstBlockOnEpoch, verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
+import {getFirstBlockOnEpochOnSpecificShard, verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
 
 import {blake3Hash, logColors, customLog, pathResolve} from '../../../KLY_Utils/utils.js'
 
@@ -336,7 +336,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
             if(!epochCache[shardID].firstBlockOnShardFound){
 
-                let findResult = await getFirstBlockOnEpoch(atEpochHandler,shardID,getBlock)
+                let findResult = await getFirstBlockOnEpochOnSpecificShard(atEpochHandler,shardID,getBlock)
 
                 if(findResult){
 

@@ -1,6 +1,6 @@
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GRACEFUL_STOP, GLOBAL_CACHES} from '../blockchain_preparation.js'
 
-import {getFirstBlockOnEpoch, verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
+import {getFirstBlockOnEpochOnSpecificShard, verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
 
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
@@ -653,7 +653,7 @@ let tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
             if(!epochCache[shardID].firstBlockCreator){
 
-                let findResult = await getFirstBlockOnEpoch(nextEpochHandlerTemplate,shardID,getBlock)
+                let findResult = await getFirstBlockOnEpochOnSpecificShard(nextEpochHandlerTemplate,shardID,getBlock)
 
                 if(findResult){
 
