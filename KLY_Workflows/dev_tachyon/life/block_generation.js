@@ -205,6 +205,8 @@ let getAggregatedEpochFinalizationProofForPreviousEpoch = async() => {
 
     let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(WORKING_THREADS.GENERATION_THREAD.epochFullId)
     
+    if(!currentEpochMetadata) return
+
     let myShardForThisEpoch = currentEpochMetadata.TEMP_CACHE.get('MY_SHARD_FOR_THIS_EPOCH')
 
     // Find locally
@@ -255,11 +257,7 @@ let getAggregatedLeaderRotationProof = async (epochHandler,pubKeyOfOneOfPrevious
 
     let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
-    if(!currentEpochMetadata){
-
-        return
-
-    }
+    if(!currentEpochMetadata) return
 
 
     // Try to return immediately

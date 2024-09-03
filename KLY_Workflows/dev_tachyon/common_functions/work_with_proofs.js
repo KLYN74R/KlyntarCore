@@ -206,7 +206,7 @@ export let getVerifiedAggregatedFinalizationProofByBlockId = async (blockID,epoc
 
 
 
-export let getFirstBlockOnEpoch = async(epochHandler,shardID,getBlockFunction) => {
+export let getFirstBlockOnEpochOnSpecificShard = async(epochHandler,shardID,getBlockFunction) => {
 
     // Check if we already tried to find first block by finding pivot in cache
 
@@ -274,7 +274,17 @@ export let getFirstBlockOnEpoch = async(epochHandler,shardID,getBlockFunction) =
         let arrayOfPoolsForShard = epochHandler.leadersSequence[shardID]
 
 
+        if(pivotShardData.position === 0){
+
+            GLOBAL_CACHES.STUFF_CACHE.delete(pivotShardID)
+
+            return {firstBlockCreator:pivotShardData.pivotPubKey,firstBlockHash:pivotShardData.firstBlockHash}
+
+        }
+
+
         for(let position = pivotShardData.position-1 ; position >= 0 ; position--){
+
         
             let previousPoolInLeadersSequence = arrayOfPoolsForShard[position]
     
@@ -283,15 +293,13 @@ export let getFirstBlockOnEpoch = async(epochHandler,shardID,getBlockFunction) =
 
             if(position === 0){
 
-                // In case we're on the beginning of the leaders sequence
+                GLOBAL_CACHES.STUFF_CACHE.delete(pivotShardID)
 
                 if(leaderRotationProofForPreviousPool.skipIndex === -1){
 
-                    GLOBAL_CACHES.STUFF_CACHE.delete(pivotShardID)
-
                     return {firstBlockCreator:pivotShardData.pivotPubKey,firstBlockHash:pivotShardData.firstBlockHash}
 
-                }
+                } else return {firstBlockCreator:previousPoolInLeadersSequence,firstBlockHash:leaderRotationProofForPreviousPool.firstBlockHash}
 
 
             } else if(leaderRotationProofForPreviousPool.skipIndex !== -1) {
@@ -315,6 +323,8 @@ export let getFirstBlockOnEpoch = async(epochHandler,shardID,getBlockFunction) =
                     }
 
                     GLOBAL_CACHES.STUFF_CACHE.set(pivotShardID,newPivotTemplate)
+
+                    break
 
                 } else return
 

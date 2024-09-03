@@ -94,7 +94,7 @@ let DEFAULT_SIMPLE_QUERIES=async()=>{
 
 let EVM_DEFAULT_TX = async() => {
 
-    let nonce = await web3.eth.getTransactionCount(evmAccount0.address)
+    let nonce = 0//await web3.eth.getTransactionCount(evmAccount0.address)
 
     // Build a transaction
     let txObject = {
@@ -125,8 +125,11 @@ let EVM_DEFAULT_TX = async() => {
 
     let raw = '0x' + Buffer.from(tx.serialize()).toString('hex')
 
-	// Broadcast the transaction
-    web3.eth.sendSignedTransaction(raw,(err,txHash) => console.log(err?`Oops,some error has been occured ${err}`:`Success ———> ${txHash}`))
+    console.log(raw)
+    
+
+	// // Broadcast the transaction
+    // web3.eth.sendSignedTransaction(raw,(err,txHash) => console.log(err?`Oops,some error has been occured ${err}`:`Success ———> ${txHash}`))
 
 }
 

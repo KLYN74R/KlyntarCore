@@ -218,7 +218,7 @@ export let findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards=async()=>{
                             
                             */
 
-                            if(position>=localVersionOfCurrentLeaders[shardID]){
+                            if(position >= localVersionOfCurrentLeaders[shardID]){
 
                                 // eslint-disable-next-line no-constant-condition
                                 while(true){
