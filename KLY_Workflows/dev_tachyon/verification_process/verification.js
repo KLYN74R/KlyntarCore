@@ -370,7 +370,7 @@ let findInfoAboutLastBlocksByPreviousShardsLeaders = async (vtEpochHandler,shard
 
             // In this block we should have ALRPs for all the previous pools
 
-            let {isOK,filteredInfoForVerificationThread} = await checkAlrpChainValidity(
+            let {isOK,infoAboutFinalBlocksInThisEpoch} = await checkAlrpChainValidity(
             
                 firstBlockInThisEpochByPool,oldLeadersSequenceForShard,position,null,null,true
             
@@ -379,9 +379,9 @@ let findInfoAboutLastBlocksByPreviousShardsLeaders = async (vtEpochHandler,shard
 
             if(isOK){
 
-                infoAboutFinalBlocksByPool.set(poolPubKey,filteredInfoForVerificationThread) // filteredInfoForVerificationThread = {reassignedPool0:{index,hash},reassignedPool1:{index,hash},...reassignedPoolN:{index,hash}}
+                infoAboutFinalBlocksByPool.set(poolPubKey,infoAboutFinalBlocksInThisEpoch) // filteredInfoForVerificationThread = {reassignedPool0:{index,hash},reassignedPool1:{index,hash},...reassignedPoolN:{index,hash}}
 
-                infoAboutLastBlocksByPreviousPool = filteredInfoForVerificationThread
+                infoAboutLastBlocksByPreviousPool = infoAboutFinalBlocksInThisEpoch
 
             }
 
