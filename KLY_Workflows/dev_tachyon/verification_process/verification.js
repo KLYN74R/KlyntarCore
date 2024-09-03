@@ -350,7 +350,7 @@ let findInfoAboutLastBlocksByPreviousShardsLeaders = async (vtEpochHandler,shard
 
     let infoAboutLastBlocksByPreviousPool
 
-    for(let position = aefp.lastLeader; position >= 0; position--){
+    for(let position = aefp.lastLeader; position > 0; position--){
 
         let poolPubKey = oldLeadersSequenceForShard[position]
 
