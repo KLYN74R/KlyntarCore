@@ -5,6 +5,7 @@
         "networkId":"0x1ca3",
         "chainId":"0x1ca3",
         "coinbase":"0x0000000000000000000000000000000000000000",
+        "connectorAddress":"0x0000000000000000000000000000000000000007",
         "hardfork":"merge",
         "gasLimitForBlock":30000000,
         
@@ -12,7 +13,7 @@
         "protocolVersionInHex":"0x1",
         "gasPriceInWeiAndHex":"0x49ad39126",
         "maxAllowedGasAmountForSandboxExecution":100000,
-        "bindContext":"9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK"
+        "bindContext":"shard_0"
     
     }
 }
