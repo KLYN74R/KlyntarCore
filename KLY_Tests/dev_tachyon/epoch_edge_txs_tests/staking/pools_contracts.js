@@ -1,4 +1,4 @@
-import {signEd25519,verifyEd25519} from '../../../KLY_Utils/utils.js'
+import {signEd25519,verifyEd25519} from '../../../../KLY_Utils/utils.js'
 
 import fetch from 'node-fetch'
 
