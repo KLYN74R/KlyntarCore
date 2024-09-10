@@ -7,9 +7,9 @@ let modules = [
     'api/misc.js',
     'api/state_data.js',
     
-    'main/epoch_changing.js',
-    'main/leaders_rotation.js',
-    'main/websocket.js',
+    'internal_logic/epoch_changing.js',
+    'internal_logic/leaders_rotation.js',
+    'internal_logic/websocket.js',
     
     'kly_evm_json_rpc.js'
 
