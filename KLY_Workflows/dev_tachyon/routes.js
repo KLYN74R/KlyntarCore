@@ -8,7 +8,7 @@ let modules = [
     'api/state_data.js',
     
     'internal_logic/epoch_changing.js',
-    'internal_logic/leaders_rotation.js',
+    'internal_logic/temp_vt_builder.js',
     'internal_logic/websocket.js',
     
     'kly_evm_json_rpc.js'
