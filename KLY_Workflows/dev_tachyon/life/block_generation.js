@@ -6,13 +6,11 @@ import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/qu
 
 import { getUserAccountFromState } from '../common_functions/state_interactions.js'
 
-import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyn74r.js'
-
-import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
-
 import {signEd25519} from '../../../KLY_Utils/utils.js'
 
 import {blockLog} from '../common_functions/logging.js'
+
+import {CONFIGURATION} from '../../../klyn74r.js'
 
 import {getAllKnownPeers} from '../utils.js'
 
@@ -27,7 +25,7 @@ import Web1337 from 'web1337'
 
 let web1337 = new Web1337({
 
-    symbioteID:'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    chainID:'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     workflowVersion:0,
     nodeURL:'http://localhost:7332'
     
@@ -122,27 +120,15 @@ let generateBatchOfMockTransactionsAndPushToMempool = async shardID => {
 
         if(pubKey.startsWith('0x')){
 
-            let payloadForMultisigTx = {
+            let singleSig = web1337.signDataForMultisigTransaction(shardID,privateKey,pubKey,[],nonce,fee,recipient,amountInKLY)
 
-                active:pubKey,
-        
-                afk:[],
-        
-                to:recipient,
-        
-                amount:amountInKLY
-
-            }
-
-            let dataToSign = BLOCKCHAIN_GENESIS.NETWORK_ID+WORKING_THREADS.VERIFICATION_THREAD.CORE_MAJOR_VERSION+'shard_0'+'TX'+JSON.stringify(payloadForMultisigTx)+nonce+fee
-
-            let signature = await bls.singleSig(dataToSign,privateKey)
+            let signature = singleSig
 
             signedTx = await web1337.createMultisigTransaction(from,from,signature,[],nonce,fee,recipient,amountInKLY)
 
         } else {
 
-            signedTx = await web1337.createDefaultTransaction(shardID,from,myPrivateKey,nonce,recipient,fee,amountInKLY);
+            signedTx = await web1337.createEd25519Transaction(shardID,from,myPrivateKey,nonce,recipient,fee,amountInKLY);
 
         }
 
