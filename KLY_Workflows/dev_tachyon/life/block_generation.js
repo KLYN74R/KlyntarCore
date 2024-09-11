@@ -124,8 +124,6 @@ let generateBatchOfMockTransactionsAndPushToMempool = async shardID => {
 
             let payloadForMultisigTx = {
 
-                sigType:'M',
-
                 active:pubKey,
         
                 afk:[],

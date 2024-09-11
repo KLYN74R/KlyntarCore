@@ -31,6 +31,7 @@ let overviewToCheckIfTxIsOk = async(tx,originShard) => {
             type:tx.type,
             nonce:tx.nonce,
             payload:tx.payload,
+            sigType:tx.sigType,
             sig:tx.sig
         
         }
