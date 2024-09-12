@@ -85,7 +85,7 @@ export let CONTRACT = {
         // ...then - create a single storage for this new contract to store the body itself
         let futureRwxContractSingleStorage = transaction.payload.params[0]
 
-        let contractID = blake3Hash(futureRwxContractSingleStorage)
+        let contractID = blake3Hash(originShard+JSON.stringify(transaction))
 
         
         // And put it to atomic batch to BLOCKCHAIN_DATABASES.STATE
