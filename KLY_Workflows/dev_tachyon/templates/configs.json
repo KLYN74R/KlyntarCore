@@ -60,6 +60,7 @@
                 "GET_CURRENT_SHARD_LEADERS":5,
                 "GET_EPOCH_BY_INDEX":5,
                 "KLY_EVM_METADATA":5,
+                "QUORUM_URLS_AND_PUBKEYS":5,
                 "VT_TOTAL_STATS":5,
                 "VT_STATS_PER_EPOCH":5
     
@@ -109,7 +110,7 @@
         "GET_AGGREGATED_FINALIZATION_PROOF_URL":"http://localhost:7332",
         "GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL":"http://localhost:7332",
     
-        "ANIMATION_DURATION":1000,
+        "ANIMATION_DURATION":0,
     
         "PLUGINS":[],
     
