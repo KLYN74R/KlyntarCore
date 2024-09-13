@@ -3,6 +3,7 @@ import {EPOCH_METADATA_MAPPING, NODE_METADATA, WORKING_THREADS} from '../../bloc
 import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 import {TXS_FILTERS} from '../../verification_process/txs_filters.js'
+import { getQuorumUrlsAndPubkeys } from '../../common_functions/quorum_related.js'
 
 
 
@@ -146,6 +147,37 @@ FASTIFY_SERVER.get('/kly_evm_metadata',(_request,response)=>{
         response.send(responseObject)
 
     }else response.send({err:'Symbiote not supported'})
+
+})
+
+
+
+
+// Returns urls and pubkeys on current epoch - mostly need for epoch edge transactions / signatures requests   
+FASTIFY_SERVER.get('/quorum_urls_and_pubkeys',async(_request,response)=>{
+
+    response
+        
+    .header('Access-Control-Allow-Origin','*')
+    .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.QUORUM_URLS_AND_PUBKEYS}`)
+
+    let currentEpoch = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
+
+    let responseObject = {
+
+        quorumUrlsAndPubkeys: await getQuorumUrlsAndPubkeys(true,currentEpoch),
+
+        epochMetadata:{
+
+            id: currentEpoch.id,
+            hash: currentEpoch.hash,
+            startTimestamp: currentEpoch.startTimestamp,
+
+        }
+
+    }
+
+    response.send(responseObject)
 
 })
 
