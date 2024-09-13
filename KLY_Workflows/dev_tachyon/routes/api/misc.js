@@ -2,9 +2,9 @@ import {EPOCH_METADATA_MAPPING, NODE_METADATA, WORKING_THREADS} from '../../bloc
 
 import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
-import {TXS_FILTERS} from '../../verification_process/txs_filters.js'
-import { getQuorumUrlsAndPubkeys } from '../../common_functions/quorum_related.js'
+import {getQuorumUrlsAndPubkeys} from '../../common_functions/quorum_related.js'
 
+import {TXS_FILTERS} from '../../verification_process/txs_filters.js'
 
 
 
