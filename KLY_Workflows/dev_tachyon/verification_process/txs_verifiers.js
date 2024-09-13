@@ -372,7 +372,7 @@ export let VERIFIERS = {
 
                 if(senderAccount.balance - goingToSpend.goingToSpendInNativeCurrency >= 0 && senderAccount.gas - goingToSpend.goingToBurnGasAmount >= 0){
 
-                    let contractID = blake3Hash(originShard+JSON.stringify(tx))
+                    let contractID = blake3Hash(originShard+tx.creator+tx.nonce)
 
                     let contractMetadataTemplate = {
         
