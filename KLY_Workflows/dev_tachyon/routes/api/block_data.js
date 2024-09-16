@@ -1,4 +1,4 @@
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../blockchain_preparation.js'
 
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
@@ -189,19 +189,8 @@ FASTIFY_SERVER.get('/aggregated_finalization_proof/:blockID',async(request,respo
     response.header('Access-Control-Allow-Origin','*')
 
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.GET_AGGREGATED_FINALIZATION_PROOFS){
-
-        let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
-
-        if(!EPOCH_METADATA_MAPPING.has(epochFullID)){
-
-            response.send({err:'Epoch handler on AT is not ready'})
-
-            return
-        }
        
-
         let aggregatedFinalizationProof = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:'+request.params.blockID).catch(()=>null)
-
 
         if(aggregatedFinalizationProof){
 
