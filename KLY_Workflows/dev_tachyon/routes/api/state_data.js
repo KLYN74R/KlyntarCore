@@ -4,7 +4,7 @@ import {KLY_EVM} from '../../../../KLY_VirtualMachines/kly_evm/vm.js'
 
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
-import {BLOCKCHAIN_DATABASES} from '../../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../blockchain_preparation.js'
 
 import Web3 from 'web3'
 
@@ -142,13 +142,18 @@ FASTIFY_SERVER.get('/pool_stats/:poolID',async(request,response)=>{
 
         let poolStorage = await getFromState(`${poolOriginShard}:${request.params.poolID}_STORAGE_POOL`)
 
+        let poolPubKey = request.params.poolID.split('(')[0]
+
+        let isActiveValidator = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry.includes(poolPubKey)
+
+        let isCurrentQuorumMember = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum.includes(poolPubKey)
 
         response
 
             .header('Access-Control-Allow-Origin','*')
             .header('Cache-Control','max-age='+CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.POOL_STATS)
         
-            .send({poolOriginShard,poolMetadata,poolStorage})
+            .send({isActiveValidator,isCurrentQuorumMember,poolOriginShard,poolMetadata,poolStorage})
 
             
     }else response.send({err:'Trigger is off'})
