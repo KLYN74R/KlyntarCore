@@ -1467,7 +1467,7 @@ let executeTransaction = async (shardContext,currentBlockID,transaction,rewardsA
 
             let txid = blake3Hash(txCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
 
-            atomicBatch.put('TX:'+txid,{blockID:currentBlockID,order:txIdToOrderMapping[txCopy.sig],isOk,reason})
+            atomicBatch.put('TX:'+txid,{shard:shardContext,blockID:currentBlockID,order:txIdToOrderMapping[txCopy.sig],isOk,reason})
 
         }
 
@@ -1495,7 +1495,7 @@ let executeGroupOfTransaction = async (shardContext,currentBlockID,independentGr
     
                 let txid = blake3Hash(txCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
     
-                atomicBatch.put('TX:'+txid,{blockID:currentBlockID,order:txIdToOrderMapping[txCopy.sig],isOk,reason})
+                atomicBatch.put('TX:'+txid,{shard:shardContext,blockID:currentBlockID,order:txIdToOrderMapping[txCopy.sig],isOk,reason})
     
             }
 

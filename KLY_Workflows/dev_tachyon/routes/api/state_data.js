@@ -78,6 +78,8 @@ FASTIFY_SERVER.get('/tx_receipt/:txID',(request,response)=>{
 
                     let formatCompatibleReceipt = {
 
+                        shard: txReceipt.originShard,
+
                         blockID: blockIdWithThisTx,
 
                         order:0,
@@ -98,6 +100,7 @@ FASTIFY_SERVER.get('/tx_receipt/:txID',(request,response)=>{
     }else response.send({err:'Route is off'})
 
 })
+
 
 
 
