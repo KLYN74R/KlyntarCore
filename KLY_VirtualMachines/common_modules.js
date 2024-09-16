@@ -202,6 +202,26 @@ export let stateInteraction = function(getOrSetOperation,idOfRecord,jsonStringTo
 
 
 
+// export let getFromState = key => {
+        
+//     let keyValue = meteredContract.exports.__getString(key);
+    
+//     return meteredContract.exports.__newString(JSON.stringify(contractState.get(keyValue)));
+
+// }
+
+//   setToState:(key,value)=>{
+
+//     let keyValue = meteredContract.exports.__getString(key);
+
+//     let valueValue = meteredContract.exports.__getString(value);
+        
+//     contractState.set(keyValue,valueValue);
+
+//   },
+
+
+
 
 // Function transfer native coins to another account(used for WVM)
 export let transferNativeCoins = function(amount) {
