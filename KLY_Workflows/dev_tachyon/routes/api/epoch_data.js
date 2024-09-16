@@ -37,19 +37,7 @@ FASTIFY_SERVER.get('/aggregated_epoch_finalization_proof/:epoch_index/:shard',as
 
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.GET_AGGREGATED_EPOCH_FINALIZATION_PROOF){
 
-        let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
-
-        if(!EPOCH_METADATA_MAPPING.has(epochFullID)){
-
-            response.send({err:'AT epoch handler is not ready'})
-        
-            return
-
-        }
-
-
         let aggregatedEpochFinalizationProofForShard = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${request.params.epoch_index}:${request.params.shard}`).catch(()=>null)
-
         
         if(aggregatedEpochFinalizationProofForShard){
 
