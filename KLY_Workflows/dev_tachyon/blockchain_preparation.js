@@ -231,20 +231,16 @@ let restoreMetadataCaches=async()=>{
 
     for(let shardID of WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.shardsRegistry){
 
-        let leadersHandler = await currentEpochMetadata.DATABASE.get('LEADERS_HANDLER:'+shardID).catch(()=>null)
+        let leadersHandler = await currentEpochMetadata.DATABASE.get('LEADERS_HANDLER:'+shardID).catch(()=>({currentLeader:0}))
 
-        if(leadersHandler){
+        currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(shardID,leadersHandler)
 
-            currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(shardID,leadersHandler)
+        // Using pointer - find the current leader
 
-            // Using pointer - find the current leader
+        let currentLeaderPubKey = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence[shardID][leadersHandler.currentLeader]
 
-            let currentLeaderPubKey = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence[shardID][leadersHandler.currentLeader]
-
-            currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(currentLeaderPubKey,shardID)                
-
-        }
-
+        currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(currentLeaderPubKey,shardID)
+        
     }
 
     // Finally, once we've started the "next epoch" process - restore it
