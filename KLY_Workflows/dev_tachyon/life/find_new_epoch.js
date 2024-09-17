@@ -224,7 +224,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
         // Get the special object from DB not to repeat requests
 
-        let epochCache = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_CACHE:${oldEpochFullID}`).catch(()=>null) || {} // {shardID:{firstBlockCreator,firstBlockHash,aefp,firstBlockOnShardFound}}
+        let handlerWithFirstBlocksPerShard = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCKS_IN_EPOCH_PER_SHARD:${oldEpochFullID}`).catch(()=>null) || {} // {shardID:{firstBlockCreator,firstBlockHash,aefp,firstBlockOnShardFound}}
 
         let entries = Object.entries(leadersSequence)
 
@@ -234,9 +234,9 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
         
             totalNumberOfShards++
         
-            if(!epochCache[shardID]) epochCache[shardID] = {firstBlockOnShardFound:false}
+            if(!handlerWithFirstBlocksPerShard[shardID]) handlerWithFirstBlocksPerShard[shardID] = {firstBlockOnShardFound:false}
 
-            if(epochCache[shardID].aefp && epochCache[shardID].firstBlockOnShardFound){
+            if(handlerWithFirstBlocksPerShard[shardID].aefp && handlerWithFirstBlocksPerShard[shardID].firstBlockOnShardFound){
 
                 totalNumberOfReadyShards++
 
@@ -278,7 +278,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
             */
 
             
-            if(!epochCache[shardID].aefp){
+            if(!handlerWithFirstBlocksPerShard[shardID].aefp){
 
                 // Try to find locally
 
@@ -286,7 +286,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
                 if(aefp){
 
-                    epochCache[shardID].aefp = aefp
+                    handlerWithFirstBlocksPerShard[shardID].aefp = aefp
 
                 }else{
 
@@ -301,7 +301,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
     
                             if(aefpPureObject && aefpPureObject.shard === shardID){
     
-                                epochCache[shardID].aefp = aefpPureObject
+                                handlerWithFirstBlocksPerShard[shardID].aefp = aefpPureObject
 
                                 // Store locally
 
@@ -334,17 +334,17 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
     
             */
 
-            if(!epochCache[shardID].firstBlockOnShardFound){
+            if(!handlerWithFirstBlocksPerShard[shardID].firstBlockOnShardFound){
 
                 let findResult = await getFirstBlockOnEpochOnSpecificShard(atEpochHandler,shardID,getBlock)
 
                 if(findResult){
 
-                    epochCache[shardID].firstBlockCreator = findResult.firstBlockCreator
+                    handlerWithFirstBlocksPerShard[shardID].firstBlockCreator = findResult.firstBlockCreator
 
-                    epochCache[shardID].firstBlockHash = findResult.firstBlockHash
+                    handlerWithFirstBlocksPerShard[shardID].firstBlockHash = findResult.firstBlockHash
 
-                    epochCache[shardID].firstBlockOnShardFound = true
+                    handlerWithFirstBlocksPerShard[shardID].firstBlockOnShardFound = true
 
                 }
 
@@ -353,16 +353,16 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
             
             //___________________ Here we should have understanding of first block for each shard on this epoch __________________________
 
-            if(epochCache[shardID].firstBlockOnShardFound && epochCache[shardID].aefp) totalNumberOfReadyShards++
+            if(handlerWithFirstBlocksPerShard[shardID].firstBlockOnShardFound && handlerWithFirstBlocksPerShard[shardID].aefp) totalNumberOfReadyShards++
 
-            if(!epochCache[shardID].firstBlockHash) epochCache[shardID] = {}
+            if(!handlerWithFirstBlocksPerShard[shardID].firstBlockHash) handlerWithFirstBlocksPerShard[shardID] = {}
     
         
         }
 
         // Store the changes in CHECKPOINT_CACHE for persistence
 
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_CACHE:${oldEpochFullID}`,epochCache).catch(()=>false)
+        await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`FIRST_BLOCKS_IN_EPOCH_PER_SHARD:${oldEpochFullID}`,handlerWithFirstBlocksPerShard).catch(()=>false)
 
 
         //_____Now, when we've resolved all the first blocks & found all the AEFPs - get blocks, extract epoch edge transactions and set the new epoch____
@@ -380,9 +380,9 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
                 // Try to get the epoch edge transactions from the first blocks
 
-                let firstBlockOnThisShard = await getBlock(atEpochHandler.id,epochCache[shardID].firstBlockCreator,0)
+                let firstBlockOnThisShard = await getBlock(atEpochHandler.id,handlerWithFirstBlocksPerShard[shardID].firstBlockCreator,0)
 
-                if(firstBlockOnThisShard && Block.genHash(firstBlockOnThisShard) === epochCache[shardID].firstBlockHash){
+                if(firstBlockOnThisShard && Block.genHash(firstBlockOnThisShard) === handlerWithFirstBlocksPerShard[shardID].firstBlockHash){
 
                     if(Array.isArray(firstBlockOnThisShard.epochEdgeTransactions)){
 
@@ -390,7 +390,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
                     }
 
-                    firstBlocksHashes.push(epochCache[shardID].firstBlockHash)
+                    firstBlocksHashes.push(handlerWithFirstBlocksPerShard[shardID].firstBlockHash)
 
                 }else{
 
@@ -603,7 +603,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
                 // Delete the cache that we don't need more
 
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`EPOCH_CACHE:${oldEpochFullID}`).catch(()=>{})
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`FIRST_BLOCKS_IN_EPOCH_PER_SHARD:${oldEpochFullID}`).catch(()=>{})
 
 
             }

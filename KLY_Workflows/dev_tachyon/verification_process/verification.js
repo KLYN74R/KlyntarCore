@@ -583,7 +583,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         // await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`EPOCH_EDGE_OPS:${vtEpochFullID}`).catch(()=>{}) // decided to not to delete for API explicit information
 
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`VT_CACHE:${vtEpochOldIndex}`).catch(()=>{})
+        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`VT_FIRST_BLOCKS_IN_EPOCH_PER_SHARD:${vtEpochOldIndex}`).catch(()=>{})
 
 
 
@@ -638,7 +638,7 @@ let tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
     if(nextEpochHash && nextEpochQuorum && nextEpochLeadersSequences){
 
-        let epochCache = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`VT_CACHE:${vtEpochIndex}`).catch(()=>false) || {} // {shardID:{firstBlockCreator,firstBlockHash}} 
+        let handlerWithFirstBlocksPerShard = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`VT_FIRST_BLOCKS_IN_EPOCH_PER_SHARD:${vtEpochIndex}`).catch(()=>false) || {} // {shardID:{firstBlockCreator,firstBlockHash}} 
 
         let totalNumberOfShards = 0, totalNumberOfShardsReadyForMove = 0
 
@@ -649,35 +649,35 @@ let tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
             totalNumberOfShards++
 
-            if(!epochCache[shardID]) epochCache[shardID]={}
+            if(!handlerWithFirstBlocksPerShard[shardID]) handlerWithFirstBlocksPerShard[shardID]={}
 
-            if(!epochCache[shardID].firstBlockCreator){
+            if(!handlerWithFirstBlocksPerShard[shardID].firstBlockCreator){
 
                 let findResult = await getFirstBlockOnEpochOnSpecificShard(nextEpochHandlerTemplate,shardID,getBlock)
 
                 if(findResult){
 
-                    epochCache[shardID].firstBlockCreator = findResult.firstBlockCreator
+                    handlerWithFirstBlocksPerShard[shardID].firstBlockCreator = findResult.firstBlockCreator
 
-                    epochCache[shardID].firstBlockHash = findResult.firstBlockHash
+                    handlerWithFirstBlocksPerShard[shardID].firstBlockHash = findResult.firstBlockHash
 
                 }
 
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`VT_CACHE:${vtEpochIndex}`,epochCache).catch(()=>{})
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`VT_FIRST_BLOCKS_IN_EPOCH_PER_SHARD:${vtEpochIndex}`,handlerWithFirstBlocksPerShard).catch(()=>{})
 
             }
 
             //____________After we get the first blocks for epoch X+1 - get the AEFP from it and build the reassignment metadata to finish epoch X____________
 
-            let firstBlockOnThisShardInThisEpoch = await getBlock(nextEpochIndex,epochCache[shardID].firstBlockCreator,0)
+            let firstBlockOnThisShardInThisEpoch = await getBlock(nextEpochIndex,handlerWithFirstBlocksPerShard[shardID].firstBlockCreator,0)
 
-            if(firstBlockOnThisShardInThisEpoch && Block.genHash(firstBlockOnThisShardInThisEpoch) === epochCache[shardID].firstBlockHash){
+            if(firstBlockOnThisShardInThisEpoch && Block.genHash(firstBlockOnThisShardInThisEpoch) === handlerWithFirstBlocksPerShard[shardID].firstBlockHash){
 
-                epochCache[shardID].aefp = firstBlockOnThisShardInThisEpoch.extraData.aefpForPreviousEpoch
+                handlerWithFirstBlocksPerShard[shardID].aefp = firstBlockOnThisShardInThisEpoch.extraData.aefpForPreviousEpoch
 
             }
 
-            if(epochCache[shardID].aefp) totalNumberOfShardsReadyForMove++
+            if(handlerWithFirstBlocksPerShard[shardID].aefp) totalNumberOfShardsReadyForMove++
 
         }
 
@@ -692,7 +692,7 @@ let tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
                 // Now, using this AEFP (especially fields lastLeader,lastIndex,lastHash,firstBlockHash) build reassignment metadata to finish epoch for this shard
                 
-                if(!WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS[shardID]) await findInfoAboutLastBlocksByPreviousShardsLeaders(vtEpochHandler,shardID,epochCache[shardID].aefp)
+                if(!WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS[shardID]) await findInfoAboutLastBlocksByPreviousShardsLeaders(vtEpochHandler,shardID,handlerWithFirstBlocksPerShard[shardID].aefp)
 
             }
 
