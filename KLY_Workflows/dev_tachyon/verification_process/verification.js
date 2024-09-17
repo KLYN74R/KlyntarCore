@@ -550,7 +550,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         // await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`EPOCH_EDGE_OPS:${vtEpochFullID}`).catch(()=>{}) // decided to not to delete for API explicit information
 
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`VT_FIRST_BLOCKS_IN_EPOCH_PER_SHARD:${vtEpochOldIndex}`).catch(()=>{})
+        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`FIRST_BLOCKS_IN_NEXT_EPOCH_PER_SHARD:${vtEpochOldIndex-1}`).catch(()=>{})
 
 
 
@@ -605,46 +605,45 @@ let tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
     if(nextEpochHash && nextEpochQuorum && nextEpochLeadersSequences){
 
-        let handlersWithFirstBlocksPerShard = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`VT_FIRST_BLOCKS_IN_EPOCH_PER_SHARD:${vtEpochIndex}`).catch(()=>false) || {} // {shardID:{firstBlockCreator,firstBlockHash}} 
+        let handlerWithFirstBlocksPerShardOnNextEpoch = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCKS_IN_NEXT_EPOCH_PER_SHARD:${vtEpochIndex}`).catch(()=>false) || {} // {shardID:{firstBlockCreator,firstBlockHash}} 
 
         let totalNumberOfShards = 0, totalNumberOfShardsReadyForMove = 0
 
-        // Find the first blocks for epoch X+1 and AFPs for these blocks
-        // Once get it - get the real first block
+        // Find the first blocks for epoch X+1
         
         for(let shardID of Object.keys(nextEpochLeadersSequences)){
 
             totalNumberOfShards++
 
-            if(!handlersWithFirstBlocksPerShard[shardID]) handlersWithFirstBlocksPerShard[shardID]={}
+            if(!handlerWithFirstBlocksPerShardOnNextEpoch[shardID]) handlerWithFirstBlocksPerShardOnNextEpoch[shardID]={}
 
-            if(!handlersWithFirstBlocksPerShard[shardID].firstBlockCreator){
+            if(!handlerWithFirstBlocksPerShardOnNextEpoch[shardID].firstBlockCreator){
 
                 let findResult = await getFirstBlockOnEpochOnSpecificShard(nextEpochHandlerTemplate,shardID,getBlock)
 
                 if(findResult){
 
-                    handlersWithFirstBlocksPerShard[shardID].firstBlockCreator = findResult.firstBlockCreator
+                    handlerWithFirstBlocksPerShardOnNextEpoch[shardID].firstBlockCreator = findResult.firstBlockCreator
 
-                    handlersWithFirstBlocksPerShard[shardID].firstBlockHash = findResult.firstBlockHash
+                    handlerWithFirstBlocksPerShardOnNextEpoch[shardID].firstBlockHash = findResult.firstBlockHash
 
                 }
 
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`VT_FIRST_BLOCKS_IN_EPOCH_PER_SHARD:${vtEpochIndex}`,handlersWithFirstBlocksPerShard).catch(()=>{})
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`FIRST_BLOCKS_IN_NEXT_EPOCH_PER_SHARD:${vtEpochIndex}`,handlerWithFirstBlocksPerShardOnNextEpoch).catch(()=>{})
 
             }
 
             //____________After we get the first blocks for epoch X+1 - get the AEFP from it and build the reassignment metadata to finish epoch X____________
 
-            let firstBlockOnThisShardInThisEpoch = await getBlock(nextEpochIndex,handlersWithFirstBlocksPerShard[shardID].firstBlockCreator,0)
+            let firstBlockOnThisShardInThisEpoch = await getBlock(nextEpochIndex,handlerWithFirstBlocksPerShardOnNextEpoch[shardID].firstBlockCreator,0)
 
-            if(firstBlockOnThisShardInThisEpoch && Block.genHash(firstBlockOnThisShardInThisEpoch) === handlersWithFirstBlocksPerShard[shardID].firstBlockHash){
+            if(firstBlockOnThisShardInThisEpoch && Block.genHash(firstBlockOnThisShardInThisEpoch) === handlerWithFirstBlocksPerShardOnNextEpoch[shardID].firstBlockHash){
 
-                handlersWithFirstBlocksPerShard[shardID].aefp = firstBlockOnThisShardInThisEpoch.extraData.aefpForPreviousEpoch
+                handlerWithFirstBlocksPerShardOnNextEpoch[shardID].aefp = firstBlockOnThisShardInThisEpoch.extraData.aefpForPreviousEpoch
 
             }
 
-            if(handlersWithFirstBlocksPerShard[shardID].aefp) totalNumberOfShardsReadyForMove++
+            if(handlerWithFirstBlocksPerShardOnNextEpoch[shardID].aefp) totalNumberOfShardsReadyForMove++
 
         }
 
@@ -659,7 +658,7 @@ let tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
                 // Now, using this AEFP (especially fields lastLeader,lastIndex,lastHash,firstBlockHash) build reassignment metadata to finish epoch for this shard
                 
-                if(!WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS[shardID]) await findInfoAboutLastBlocksByPreviousShardsLeaders(vtEpochHandler,shardID,handlersWithFirstBlocksPerShard[shardID].aefp)
+                if(!WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS[shardID]) await findInfoAboutLastBlocksByPreviousShardsLeaders(vtEpochHandler,shardID,handlerWithFirstBlocksPerShardOnNextEpoch[shardID].aefp)
 
             }
 
@@ -1621,6 +1620,12 @@ let verifyBlock = async(block,shardContext) => {
         let generalBlockIndexInShard = WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardContext]
 
         atomicBatch.put(`SID:${shardContext}:${generalBlockIndexInShard}`,currentBlockID)
+
+
+        // Due to optimization - store the first blocks on shard for the first epoch (with index === 0)
+
+        atomicBatch.put('FIRST_BLOCK_ON_SHARD_AND_HASH:'+shardContext,{firstBlockCreator:block.creator,firstBlockHash:blockHash})
+
 
         WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardContext]++
 

@@ -6,7 +6,7 @@ import {shareBlocksAndGetFinalizationProofs} from './life/share_block_and_grab_p
 
 import {startVerificationThread} from './verification_process/verification.js'
 
-import {findAggregatedEpochFinalizationProofs} from './life/find_new_epoch.js'
+import {findAefpsAndFirstBlocksForCurrentEpoch} from './life/find_new_epoch.js'
 
 import {shardsLeadersMonitoring} from './life/shards_leaders_monitoring.js'
 
@@ -40,7 +40,7 @@ export let runBlockchain=async()=>{
     startVerificationThread()
 
     //✅1.Thread to find AEFPs and change the epoch for AT
-    findAggregatedEpochFinalizationProofs()
+    findAefpsAndFirstBlocksForCurrentEpoch()
 
     //✅2.Share our blocks within quorum members and get the finalization proofs
     shareBlocksAndGetFinalizationProofs()
