@@ -6,9 +6,9 @@ import {getPseudoRandomSubsetFromQuorumByTicketId} from '../../common_functions/
 
 import {signEd25519, verifyEd25519, logColors, customLog} from '../../../../KLY_Utils/utils.js'
 
-import {useTemporaryDb} from '../../common_functions/approvement_thread_related.js'
-
 import {checkAlrpChainValidity, getBlock} from '../../verification_process/verification.js'
+
+import {useTemporaryDb} from '../../common_functions/approvement_thread_related.js'
 
 import {CONFIGURATION} from '../../../../klyn74r.js'
 
@@ -274,6 +274,28 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
                         currentEpochMetadata.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
 
                         return
+
+                    }
+                    
+                    // In case it's the second block in this epoch by this validator - store the fact about first block assumption
+
+                    if(block.index === 1) {
+
+                        let firstBlockAssumptionAlreadyExists = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}:${shardID}`).catch(()=>false)
+
+                        if(!firstBlockAssumptionAlreadyExists){
+
+                            let objectToStore = {
+
+                                indexOfFirstBlockCreator: epochHandler.leadersSequence[shardID].indexOf(block.creator),
+
+                                afpForFirstBlock: previousBlockAFP
+
+                            }
+
+                            await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}:${shardID}`,objectToStore).catch(()=>{})
+
+                        }
 
                     }
 
