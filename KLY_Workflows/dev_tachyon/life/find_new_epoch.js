@@ -1,8 +1,8 @@
 import {GRACEFUL_STOP, BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES, EPOCH_METADATA_MAPPING} from '../blockchain_preparation.js'
 
-import {getCurrentEpochQuorum, getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
-
 import {getFirstBlockOnEpochOnSpecificShard, verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
+
+import {getCurrentEpochQuorum, getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
 import {blake3Hash, logColors, customLog, pathResolve} from '../../../KLY_Utils/utils.js'
 

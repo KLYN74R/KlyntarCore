@@ -276,6 +276,28 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
                         return
 
                     }
+                    
+                    // In case it's the second block in this epoch by this validator - store the fact about first block assumption
+
+                    if(block.index === 1) {
+
+                        let firstBlockAssumptionAlreadyExists = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}:${shardID}`).catch(()=>false)
+
+                        if(!firstBlockAssumptionAlreadyExists){
+
+                            let objectToStore = {
+
+                                indexOfFirstBlockCreator: epochHandler.leadersSequence[shardID].indexOf(block.creator),
+
+                                afpForFirstBlock: previousBlockAFP
+
+                            }
+
+                            await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}:${shardID}`,objectToStore).catch(()=>{})
+
+                        }
+
+                    }
 
 
                 }
