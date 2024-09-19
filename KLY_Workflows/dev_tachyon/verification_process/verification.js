@@ -1621,12 +1621,6 @@ let verifyBlock = async(block,shardContext) => {
 
         atomicBatch.put(`SID:${shardContext}:${generalBlockIndexInShard}`,currentBlockID)
 
-
-        // Due to optimization - store the first blocks on shard for the first epoch (with index === 0)
-
-        atomicBatch.put('FIRST_BLOCK_ON_SHARD_AND_HASH:'+shardContext,{firstBlockCreator:block.creator,firstBlockHash:blockHash})
-
-
         WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardContext]++
 
   
