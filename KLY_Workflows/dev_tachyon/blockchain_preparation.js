@@ -219,11 +219,7 @@ let restoreMetadataCaches=async()=>{
 
     for(let poolPubKey of poolsRegistry){
 
-        // If this value is related to the current epoch - set to manager, otherwise - take from the VERIFICATION_STATS_PER_POOL as a start point
-        // Returned value is {index,hash,(?)afp}
-
         let {index,hash,afp} = await currentEpochMetadata.DATABASE.get(poolPubKey).catch(()=>null) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
-
         
         currentEpochMetadata.FINALIZATION_STATS.set(poolPubKey,{index,hash,afp})
 
