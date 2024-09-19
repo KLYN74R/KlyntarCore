@@ -352,9 +352,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
             }
 
-            
-            //___________________ Here we should have understanding of first block for each shard on this epoch __________________________
-
+        
             if(handlerWithFirstBlocksAndAefpsPerShard[shardID].firstBlockOnShardFound && handlerWithFirstBlocksAndAefpsPerShard[shardID].aefp) totalNumberOfReadyShards++
 
             if(!handlerWithFirstBlocksAndAefpsPerShard[shardID].firstBlockHash) handlerWithFirstBlocksAndAefpsPerShard[shardID] = {}
