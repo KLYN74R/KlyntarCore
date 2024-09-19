@@ -443,9 +443,6 @@ let runFinaliationProofsGrabbing = async (epochHandler,proofsGrabber) => {
         // Store locally
         await BLOCKCHAIN_DATABASES.EPOCH_DATA.put('AFP:'+blockIDForHunting,aggregatedFinalizationProof).catch(()=>false)
 
-        customLog(`Approved height for epoch \u001b[38;5;50m${epochHandler.id} \x1b[31;1mis \u001b[38;5;50m${proofsGrabber.acceptedIndex} \x1b[32;1m(${(finalizationProofsMapping.size/epochHandler.quorum.length).toFixed(3)*100}% agreements)`,logColors.RED)
-
-        console.log('\n')
 
         // Delete finalization proofs that we don't need more
         FINALIZATION_PROOFS.delete(blockIDForHunting)
@@ -463,6 +460,11 @@ let runFinaliationProofsGrabbing = async (epochHandler,proofsGrabber) => {
             proofsGrabber.acceptedHash = proofsGrabber.huntingForHash
 
         }).catch(()=>{})
+
+
+        customLog(`Approved height for epoch \u001b[38;5;50m${epochHandler.id} \x1b[31;1mis \u001b[38;5;50m${proofsGrabber.acceptedIndex-1} \x1b[32;1m(${(finalizationProofsMapping.size/epochHandler.quorum.length).toFixed(3)*100}% agreements)`,logColors.RED)
+
+        console.log('\n')
 
 
         TEMP_CACHE.delete('FP_SPAM_FLAG')
