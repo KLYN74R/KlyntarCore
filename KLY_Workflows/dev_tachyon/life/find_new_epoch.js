@@ -338,17 +338,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
             if(!handlerWithFirstBlocksAndAefpsPerShard[shardID].firstBlockOnShardFound){
 
-                let findResult
-
-                if(atEpochHandler.id === 0){
-
-                    // Find stored data locally
-
-                    findResult = await BLOCKCHAIN_DATABASES.STATE.get('FIRST_BLOCK_ON_SHARD_AND_HASH:'+shardID).catch(()=>null) // {firstBlockCreator,firstBlockHash}
-
-                }
-
-                findResult = handlerWithFirstBlocks[shardID] || await getFirstBlockOnEpochOnSpecificShard(atEpochHandler,shardID,getBlock)
+                let findResult = handlerWithFirstBlocks[shardID] || await getFirstBlockOnEpochOnSpecificShard(atEpochHandler,shardID,getBlock)
 
                 if(findResult){
 
