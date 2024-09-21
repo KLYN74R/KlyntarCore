@@ -195,11 +195,11 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
     if(!epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)){
 
-        let atEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
+        let currentEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
-        let oldEpochFullID = atEpochHandler.hash+"#"+atEpochHandler.id
+        let currentEpochFullID = currentEpochHandler.hash+"#"+currentEpochHandler.id
     
-        let temporaryObject = EPOCH_METADATA_MAPPING.get(oldEpochFullID)
+        let temporaryObject = EPOCH_METADATA_MAPPING.get(currentEpochFullID)
     
         if(!temporaryObject){
     
@@ -216,15 +216,15 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
         let totalNumberOfReadyShards = 0
 
-        let leadersSequence = atEpochHandler.leadersSequence
+        let leadersSequence = currentEpochHandler.leadersSequence
 
-        let majority = getQuorumMajority(atEpochHandler)
+        let majority = getQuorumMajority(currentEpochHandler)
 
         let allKnownPeers = await getQuorumUrlsAndPubkeys()
 
 
 
-        let aefpAndFirstBlockData = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCKS_DATA_AND_AEFPS:${oldEpochFullID}`).catch(()=>null) || {} // {shardID:{firstBlockCreator,firstBlockHash,aefp}}
+        let aefpAndFirstBlockData = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCKS_DATA_AND_AEFPS:${currentEpochFullID}`).catch(()=>({})) // {shardID:{firstBlockCreator,firstBlockHash,aefp}}
 
         let entries = Object.entries(leadersSequence)
 
@@ -282,7 +282,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 // Try to find locally
 
-                let aefp = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${atEpochHandler.id}:${shardID}`).catch(()=>false)
+                let aefp = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${currentEpochHandler.id}:${shardID}`).catch(()=>false)
 
                 if(aefp){
 
@@ -293,11 +293,11 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                     // Ask quorum for AEFP
                     for(let peerURL of allKnownPeers){
             
-                        let itsProbablyAggregatedEpochFinalizationProof = await fetch(peerURL+`/aggregated_epoch_finalization_proof/${atEpochHandler.id}/${shardID}`).then(r=>r.json()).catch(()=>false)
+                        let itsProbablyAggregatedEpochFinalizationProof = await fetch(peerURL+`/aggregated_epoch_finalization_proof/${currentEpochHandler.id}/${shardID}`).then(r=>r.json()).catch(()=>false)
                 
                         if(itsProbablyAggregatedEpochFinalizationProof){
                 
-                            let aefpPureObject = await verifyAggregatedEpochFinalizationProof(itsProbablyAggregatedEpochFinalizationProof,atEpochHandler.quorum,majority,oldEpochFullID)
+                            let aefpPureObject = await verifyAggregatedEpochFinalizationProof(itsProbablyAggregatedEpochFinalizationProof,currentEpochHandler.quorum,majority,currentEpochFullID)
     
                             if(aefpPureObject && aefpPureObject.shard === shardID){
     
@@ -305,7 +305,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                                 // Store locally
 
-                                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`AEFP:${atEpochHandler.id}:${shardID}`,aefpPureObject).catch(()=>{})
+                                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`AEFP:${currentEpochHandler.id}:${shardID}`,aefpPureObject).catch(()=>{})
 
                                 // No sense to find more
 
@@ -338,7 +338,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 // Structure is {firstBlockCreator,firstBlockHash}
             
-                let storedFirstBlockData = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCK:${atEpochHandler.id}:${shardID}`).catch(()=>null)
+                let storedFirstBlockData = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCK:${currentEpochHandler.id}:${shardID}`).catch(()=>null)
 
                 if(storedFirstBlockData){
 
@@ -360,7 +360,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
         // Save the changes(caching)
 
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`FIRST_BLOCKS_DATA_AND_AEFPS:${oldEpochFullID}`,aefpAndFirstBlockData).catch(()=>{})
+        await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`FIRST_BLOCKS_DATA_AND_AEFPS:${currentEpochFullID}`,aefpAndFirstBlockData).catch(()=>{})
 
 
         //_____Now, when we've resolved all the first blocks & found all the AEFPs - get blocks, extract epoch edge transactions and set the new epoch____
@@ -378,7 +378,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 // Try to get the epoch edge transactions from the first blocks
 
-                let firstBlockOnThisShard = await getBlock(atEpochHandler.id,aefpAndFirstBlockData[shardID].firstBlockCreator,0)
+                let firstBlockOnThisShard = await getBlock(currentEpochHandler.id,aefpAndFirstBlockData[shardID].firstBlockCreator,0)
 
                 if(firstBlockOnThisShard && Block.genHash(firstBlockOnThisShard) === aefpAndFirstBlockData[shardID].firstBlockHash){
 
@@ -403,19 +403,19 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
             if(!cycleWasBreak){
 
                 // Store the legacy data about this epoch that we'll need in future - epochFullID,quorum,majority
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`LEGACY_DATA:${atEpochHandler.id}`,{
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`LEGACY_DATA:${currentEpochHandler.id}`,{
 
-                    epochFullID:oldEpochFullID,
-                    quorum:atEpochHandler.quorum,
+                    epochFullID:currentEpochFullID,
+                    quorum:currentEpochHandler.quorum,
                     majority
 
                 }).catch(()=>{})
 
                 // For API - store the whole epoch handler object by epoch numerical index
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_HANDLER:${atEpochHandler.id}`,atEpochHandler).catch(()=>{})
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_HANDLER:${currentEpochHandler.id}`,currentEpochHandler).catch(()=>{})
                                 
                 // ... and delete the legacy data for previos epoch(don't need it anymore for approvements)
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`LEGACY_DATA:${atEpochHandler.id-1}`).catch(()=>{})
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`LEGACY_DATA:${currentEpochHandler.id-1}`).catch(()=>{})
 
 
                 let daoVotingContractCalls = [], slashingContractCalls = [], reduceUnoContractCalls = [], allTheRestContractCalls = []
@@ -444,7 +444,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 // Store the epoch edge transactions locally because we'll need it later(to change the epoch on VT - Verification Thread)
                 // So, no sense to grab it twice(on AT and later on VT). On VT we just get it from DB and execute these transactions(already in priority order)
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_EDGE_TXS:${oldEpochFullID}`,epochEdgeTransactions).catch(()=>false)
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_EDGE_TXS:${currentEpochFullID}`,epochEdgeTransactions).catch(()=>false)
 
 
                 for(let operation of epochEdgeTransactionsOrderByPriority){
@@ -484,30 +484,30 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                
                 // Now, after the execution we can change the checkpoint id and get the new hash + prepare new temporary object
                 
-                let nextEpochId = atEpochHandler.id + 1
+                let nextEpochId = currentEpochHandler.id + 1
 
                 let nextEpochHash = blake3Hash(JSON.stringify(firstBlocksHashes))
 
                 let nextEpochFullID = nextEpochHash+'#'+nextEpochId
 
 
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_HASH:${oldEpochFullID}`,nextEpochHash).catch(()=>{})
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_HASH:${nextEpochId}`,nextEpochHash).catch(()=>{})
 
 
                 // After execution - assign pools(validators) to shards
 
-                await setLeadersSequenceForShards(atEpochHandler,nextEpochHash)
+                await setLeadersSequenceForShards(currentEpochHandler,nextEpochHash)
 
                 
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_LEADERS_SEQUENCES:${oldEpochFullID}`,WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence).catch(()=>{})
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_LEADERS_SEQUENCES:${nextEpochId}`,WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence).catch(()=>{})
 
 
-                customLog(`\u001b[38;5;154mEpoch edge transactions were executed for epoch \u001b[38;5;93m${oldEpochFullID} (AT)\u001b[0m`,logColors.GREEN)
+                customLog(`\u001b[38;5;154mEpoch edge transactions were executed for epoch \u001b[38;5;93m${currentEpochFullID} (AT)\u001b[0m`,logColors.GREEN)
 
 
                 //_______________________ Update the values for new epoch _______________________
 
-                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.startTimestamp = atEpochHandler.startTimestamp + WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.EPOCH_TIME
+                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.startTimestamp = currentEpochHandler.startTimestamp + WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.EPOCH_TIME
 
                 WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id = nextEpochId
 
@@ -515,7 +515,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum = getCurrentEpochQuorum(WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS,nextEpochHash)
 
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${oldEpochFullID}`,WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum).catch(()=>{})
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_QUORUM:${nextEpochId}`,WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum).catch(()=>{})
                 
                 // Create new temporary db for the next epoch
 
@@ -567,11 +567,11 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 // Close & delete the old temporary db
             
-                await EPOCH_METADATA_MAPPING.get(oldEpochFullID).DATABASE.close()
+                await EPOCH_METADATA_MAPPING.get(currentEpochFullID).DATABASE.close()
         
-                fs.rm(process.env.CHAINDATA_PATH+`/${oldEpochFullID}`,{recursive:true},()=>{})
+                fs.rm(process.env.CHAINDATA_PATH+`/${currentEpochFullID}`,{recursive:true},()=>{})
         
-                EPOCH_METADATA_MAPPING.delete(oldEpochFullID)
+                EPOCH_METADATA_MAPPING.delete(currentEpochFullID)
 
                 
                 
@@ -601,7 +601,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 // Delete the cache that we don't need more
 
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`FIRST_BLOCKS_DATA_AND_AEFPS:${oldEpochFullID}`).catch(()=>{})
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`FIRST_BLOCKS_DATA_AND_AEFPS:${currentEpochFullID}`).catch(()=>{})
 
 
             }
