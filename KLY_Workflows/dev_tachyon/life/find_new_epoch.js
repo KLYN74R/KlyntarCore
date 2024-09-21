@@ -1,8 +1,8 @@
 import {GRACEFUL_STOP, BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES, EPOCH_METADATA_MAPPING} from '../blockchain_preparation.js'
 
-import {getFirstBlockOnEpochOnSpecificShard, verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
-
 import {getCurrentEpochQuorum, getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
+
+import {verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
 
 import {blake3Hash, logColors, customLog, pathResolve} from '../../../KLY_Utils/utils.js'
 
@@ -223,8 +223,8 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
         let allKnownPeers = await getQuorumUrlsAndPubkeys()
 
 
-        
-        let handlerWithFirstBlocksAndAefpsPerShard = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCKS_IN_EPOCH_PER_SHARD:${oldEpochFullID}`).catch(()=>null) || {} // {shardID:{firstBlockCreator,firstBlockHash,aefp,firstBlockOnShardFound}}
+
+        let aefpAndFirstBlockData = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCKS_DATA_AND_AEFPS:${oldEpochFullID}`).catch(()=>null) || {} // {shardID:{firstBlockCreator,firstBlockHash,aefp}}
 
         let entries = Object.entries(leadersSequence)
 
@@ -234,9 +234,9 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
         
             totalNumberOfShards++
         
-            if(!handlerWithFirstBlocksAndAefpsPerShard[shardID]) handlerWithFirstBlocksAndAefpsPerShard[shardID] = {firstBlockOnShardFound:false}
+            if(!aefpAndFirstBlockData[shardID]) aefpAndFirstBlockData[shardID] = {}
 
-            if(handlerWithFirstBlocksAndAefpsPerShard[shardID].aefp && handlerWithFirstBlocksAndAefpsPerShard[shardID].firstBlockOnShardFound){
+            if(aefpAndFirstBlockData[shardID].aefp && aefpAndFirstBlockData[shardID].firstBlockHash){
 
                 totalNumberOfReadyShards++
 
@@ -278,7 +278,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
             */
 
             
-            if(!handlerWithFirstBlocksAndAefpsPerShard[shardID].aefp){
+            if(!aefpAndFirstBlockData[shardID].aefp){
 
                 // Try to find locally
 
@@ -286,7 +286,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 if(aefp){
 
-                    handlerWithFirstBlocksAndAefpsPerShard[shardID].aefp = aefp
+                    aefpAndFirstBlockData[shardID].aefp = aefp
 
                 }else{
 
@@ -301,7 +301,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
     
                             if(aefpPureObject && aefpPureObject.shard === shardID){
     
-                                handlerWithFirstBlocksAndAefpsPerShard[shardID].aefp = aefpPureObject
+                                aefpAndFirstBlockData[shardID].aefp = aefpPureObject
 
                                 // Store locally
 
@@ -334,32 +334,33 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
     
             */
 
-            if(!handlerWithFirstBlocksAndAefpsPerShard[shardID].firstBlockOnShardFound){
+            if(!aefpAndFirstBlockData[shardID].firstBlockHash){
 
-                let findResult = await getFirstBlockOnEpochOnSpecificShard(atEpochHandler,shardID,getBlock)
+                // Structure is {firstBlockCreator,firstBlockHash}
+            
+                let storedFirstBlockData = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCK:${atEpochHandler.id}:${shardID}`).catch(()=>null)
 
-                if(findResult){
+                if(storedFirstBlockData){
 
-                    handlerWithFirstBlocksAndAefpsPerShard[shardID].firstBlockCreator = findResult.firstBlockCreator
+                    aefpAndFirstBlockData[shardID].firstBlockCreator = storedFirstBlockData.firstBlockCreator
 
-                    handlerWithFirstBlocksAndAefpsPerShard[shardID].firstBlockHash = findResult.firstBlockHash
-
-                    handlerWithFirstBlocksAndAefpsPerShard[shardID].firstBlockOnShardFound = true
+                    aefpAndFirstBlockData[shardID].firstBlockHash = storedFirstBlockData.firstBlockHash
 
                 }
 
             }
 
-            if(handlerWithFirstBlocksAndAefpsPerShard[shardID].firstBlockOnShardFound && handlerWithFirstBlocksAndAefpsPerShard[shardID].aefp) totalNumberOfReadyShards++
+        
+            if(aefpAndFirstBlockData[shardID].firstBlockHash && aefpAndFirstBlockData[shardID].aefp) totalNumberOfReadyShards++
 
-            if(!handlerWithFirstBlocksAndAefpsPerShard[shardID].firstBlockHash) handlerWithFirstBlocksAndAefpsPerShard[shardID] = {}
+            if(!aefpAndFirstBlockData[shardID].firstBlockHash) aefpAndFirstBlockData[shardID] = {}
     
         
         }
 
-        // Store the changes in CHECKPOINT_CACHE for persistence
+        // Save the changes(caching)
 
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`FIRST_BLOCKS_IN_EPOCH_PER_SHARD:${oldEpochFullID}`,handlerWithFirstBlocksAndAefpsPerShard).catch(()=>false)
+        await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`FIRST_BLOCKS_DATA_AND_AEFPS:${oldEpochFullID}`,aefpAndFirstBlockData).catch(()=>{})
 
 
         //_____Now, when we've resolved all the first blocks & found all the AEFPs - get blocks, extract epoch edge transactions and set the new epoch____
@@ -377,9 +378,9 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 // Try to get the epoch edge transactions from the first blocks
 
-                let firstBlockOnThisShard = await getBlock(atEpochHandler.id,handlerWithFirstBlocksAndAefpsPerShard[shardID].firstBlockCreator,0)
+                let firstBlockOnThisShard = await getBlock(atEpochHandler.id,aefpAndFirstBlockData[shardID].firstBlockCreator,0)
 
-                if(firstBlockOnThisShard && Block.genHash(firstBlockOnThisShard) === handlerWithFirstBlocksAndAefpsPerShard[shardID].firstBlockHash){
+                if(firstBlockOnThisShard && Block.genHash(firstBlockOnThisShard) === aefpAndFirstBlockData[shardID].firstBlockHash){
 
                     if(Array.isArray(firstBlockOnThisShard.epochEdgeTransactions)){
 
@@ -387,7 +388,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                     }
 
-                    firstBlocksHashes.push(handlerWithFirstBlocksAndAefpsPerShard[shardID].firstBlockHash)
+                    firstBlocksHashes.push(aefpAndFirstBlockData[shardID].firstBlockHash)
 
                 }else{
 
@@ -600,7 +601,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 // Delete the cache that we don't need more
 
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`FIRST_BLOCKS_IN_EPOCH_PER_SHARD:${oldEpochFullID}`).catch(()=>{})
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`FIRST_BLOCKS_DATA_AND_AEFPS:${oldEpochFullID}`).catch(()=>{})
 
 
             }

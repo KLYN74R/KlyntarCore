@@ -1629,7 +1629,7 @@ let verifyBlock = async(block,shardContext) => {
 
         if(block.index === 0){
 
-            // Structure is {blockID,blockHash}
+            // Structure is {firstBlockCreator,firstBlockHash}
             
             let handlerWithTheFirstBlockData = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCK:${currentEpochIndex}:${shardContext}`).catch(()=>false)
 
@@ -1638,9 +1638,9 @@ let verifyBlock = async(block,shardContext) => {
 
                 handlerWithTheFirstBlockData = {
 
-                    blockID:currentBlockID,
-
-                    blockHash
+                    firstBlockCreator: block.creator,
+                    
+                    firstBlockHash: blockHash
 
                 }
 
