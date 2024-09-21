@@ -1656,6 +1656,32 @@ let verifyBlock = async(block,shardContext) => {
 
         WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardContext]++
 
+
+        // Try to set the pointer to the first block in epoch on specific shard
+
+        if(block.index === 0){
+
+            // Structure is {blockID,blockHash}
+            
+            let handlerWithTheFirstBlockData = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCK:${currentEpochIndex}:${shardContext}`).catch(()=>false)
+
+            // If no exists - it's obvious that it's the first block
+            if(!handlerWithTheFirstBlockData){
+
+                handlerWithTheFirstBlockData = {
+
+                    blockID:currentBlockID,
+
+                    blockHash
+
+                }
+
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`FIRST_BLOCK:${currentEpochIndex}:${shardContext}`,handlerWithTheFirstBlockData).catch(()=>{})
+
+            }
+
+        }
+
   
         // Increase the total blocks & txs counters(for explorer & stats purposes)
         
