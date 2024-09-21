@@ -18,7 +18,7 @@ import {signEd25519} from '../../../../KLY_Utils/utils.js'
 
 [Returns]:
 
-    {indexOfFirstBlockCreator, afpForFirstBlock}
+    {indexOfFirstBlockCreator, afpForSecondBlock}
 
 */
 
@@ -26,7 +26,7 @@ import {signEd25519} from '../../../../KLY_Utils/utils.js'
 
 FASTIFY_SERVER.get('/first_block_assumption/:epoch_index/:shard',async(request,response)=>{
 
-    let firstBlockAssumption = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCK_ASSUMPTION:${request.params.epoch_index}:${request.params.shard}`).catch(()=>false)
+    let firstBlockAssumption = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCK_ASSUMPTION:${request.params.epoch_index}:${request.params.shard}`).catch(()=>null)
         
     if(firstBlockAssumption){
 
@@ -243,7 +243,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
                     if(epochManagerForLeader.index === proposition.metadataForCheckpoint.index && epochManagerForLeader.hash === proposition.metadataForCheckpoint.hash){
                         
-                        // Send EPOCH_FINALIZATION_PROOF signature
+                        // Send AEFP signature
 
                         let {index,hash} = proposition.metadataForCheckpoint
 
@@ -260,7 +260,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
                             
                     }else if(epochManagerForLeader.index < proposition.metadataForCheckpoint.index){
 
-                        // Verify AGGREGATED_FINALIZATION_PROOF & upgrade local version & send EPOCH_FINALIZATION_PROOF
+                        // Verify AGGREGATED_FINALIZATION_PROOF & upgrade local version & send AEFP signature
 
                         let {index,hash,afp} = proposition.metadataForCheckpoint
 
@@ -290,7 +290,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
     
                                     epochManagerForLeader.afp = afp
     
-                                }else currentEpochMetadata.FINALIZATION_STATS.set(pubKeyOfCurrentLeaderOnShard,{index,hash,afp})
+                                } else currentEpochMetadata.FINALIZATION_STATS.set(pubKeyOfCurrentLeaderOnShard,{index,hash,afp})
 
                             
                                 // Generate EPOCH_FINALIZATION_PROOF_SIGNATURE

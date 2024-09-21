@@ -265,7 +265,8 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
     
                 }
     
-                // In case we vote for index > 0 - we need to add the AFP proof to proposition. This will be added to AEFP and used on verification thread
+                // In case we vote for index > 0 - we need to add the AFP proof to proposition as a proof that first block by this leader has such hash
+                // This will be added to AEFP and used on verification thread
     
                 if(epochFinishProposition[shardID].metadataForCheckpoint.index >= 0){
     
