@@ -6,9 +6,9 @@ import {getPseudoRandomSubsetFromQuorumByTicketId} from '../../common_functions/
 
 import {signEd25519, verifyEd25519, logColors, customLog} from '../../../../KLY_Utils/utils.js'
 
-import {checkAlrpChainValidity, getBlock} from '../../verification_process/verification.js'
-
 import {useTemporaryDb} from '../../common_functions/approvement_thread_related.js'
+
+import {checkAlrpChainValidity} from '../../verification_process/verification.js'
 
 import {CONFIGURATION} from '../../../../klyn74r.js'
 
@@ -277,9 +277,10 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
 
                     }
                     
-                    // In case it's the second block in this epoch by this validator - store the fact about first block assumption
+                    // In case it's request for the third block, we'll receive AFP for the second block which includes .prevBlockHash field
+                    // This will be the assumption of hash of the first block in epoch
 
-                    if(block.index === 1) {
+                    if(block.index === 2) {
 
                         let firstBlockAssumptionAlreadyExists = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}:${shardID}`).catch(()=>false)
 
@@ -289,7 +290,7 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
 
                                 indexOfFirstBlockCreator: epochHandler.leadersSequence[shardID].indexOf(block.creator),
 
-                                afpForFirstBlock: previousBlockAFP
+                                afpForSecondBlock: previousBlockAFP
 
                             }
 
@@ -510,7 +511,7 @@ let returnFinalizationProofBasedOnTmbProof=async(parsedData,connection)=>{
                 }
 
 
-                // Now verify the aggregated skip proof
+                // Now verify the AFP
                 let {prevBlockHash,blockID:blockIDFromAFP,blockHash:blockHashFromAFP,proofs} = previousBlockAFP
 
                 if(blockIndex !== 0){
@@ -819,7 +820,7 @@ let returnLeaderRotationProofForSetOfLeaders = async(requestForLeaderRotationPro
             
             if(!afpIsOk){
 
-                connection.sendUTF(JSON.stringify({err:'Wrong aggregated signature for skipIndex > -1'}))
+                connection.sendUTF(JSON.stringify({err:'Failed AFP verification for skipIndex > -1'}))
 
                 return
 
@@ -834,20 +835,6 @@ let returnLeaderRotationProofForSetOfLeaders = async(requestForLeaderRotationPro
             let dataToSignForSkipProof, firstBlockAfpIsOk = false
 
 
-            /*
-            
-                We also need the hash of ASP for previous pool
-
-                In case index === -1 it's a signal that no block was created, so no ASPs for previous pool. Sign the nullhash(0123456789ab...)
-
-                Otherwise - find block, compare it's hash with <requestForSkipProof.afpForFirstBlock.prevBlockHash>
-
-                In case hashes match - extract the ASP for previous pool <epochHandler.leadersSequence[shard][indexOfThis-1]>, get the BLAKE3 hash and paste this hash to <dataToSignForSkipProof>
-            
-                [REMINDER]: Signature structure is ED25519_SIG('LEADER_ROTATION_PROOF:<poolPubKey>:<firstBlockHash>:<index>:<hash>:<epochFullID>')
-
-            */
-
             if(index === -1){
 
                 // If skipIndex is -1 then sign the hash '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'(null,default hash) as the hash of firstBlockHash
@@ -859,23 +846,17 @@ let returnLeaderRotationProofForSetOfLeaders = async(requestForLeaderRotationPro
 
             }else if(index >= 0 && typeof requestForLeaderRotationProof.afpForFirstBlock === 'object'){
 
-                // Verify the aggregatedFinalizationProofForFirstBlock in case skipIndex > 0
+                // Verify the afpForFirstBlock to know the hash of first block by pool
 
                 let blockIdOfFirstBlock = epochHandler.id+':'+requestForLeaderRotationProof.poolPubKey+':0'
             
                 if(await verifyAggregatedFinalizationProof(requestForLeaderRotationProof.afpForFirstBlock,epochHandler) && requestForLeaderRotationProof.afpForFirstBlock.blockID === blockIdOfFirstBlock){
 
-                    let block = await getBlock(epochHandler.id,requestForLeaderRotationProof.poolPubKey,0)
+                    let firstBlockHash = requestForLeaderRotationProof.afpForFirstBlock.blockHash
 
-                    if(block && Block.genHash(block) === requestForLeaderRotationProof.afpForFirstBlock.blockHash){
+                    dataToSignForSkipProof = `LEADER_ROTATION_PROOF:${requestForLeaderRotationProof.poolPubKey}:${firstBlockHash}:${index}:${hash}:${epochFullID}`
 
-                        let firstBlockHash = requestForLeaderRotationProof.afpForFirstBlock.blockHash
-
-                        dataToSignForSkipProof = `LEADER_ROTATION_PROOF:${requestForLeaderRotationProof.poolPubKey}:${firstBlockHash}:${index}:${hash}:${epochFullID}`
-
-                        firstBlockAfpIsOk = true                    
-    
-                    }
+                    firstBlockAfpIsOk = true
 
                 }
 
