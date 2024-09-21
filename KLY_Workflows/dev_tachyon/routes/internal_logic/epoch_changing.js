@@ -271,10 +271,11 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
                             // Check that this AFP is for appropriate pool
 
-                            // eslint-disable-next-line no-unused-vars
-                            let [_,pubKeyOfCreator] = afp.blockID.split(':')
+                            let [epochIndex,pubKeyOfCreator] = afp.blockID.split(':')
 
-                            if(pubKeyOfCreator === pubKeyOfCurrentLeaderOnShard){
+                            let blockIdThatShouldBeInAfp = `${epochIndex}:${pubKeyOfCreator}:${index}`
+
+                            if(pubKeyOfCreator === pubKeyOfCurrentLeaderOnShard && hash === afp.blockHash && blockIdThatShouldBeInAfp === afp.blockID){
 
                             
                                 if(leadersHandlerForThisShard) leadersHandlerForThisShard.currentLeader = proposition.currentLeader
