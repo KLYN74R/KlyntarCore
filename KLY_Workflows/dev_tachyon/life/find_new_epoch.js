@@ -222,10 +222,8 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
         let allKnownPeers = await getQuorumUrlsAndPubkeys()
 
-        // Get the special object from DB not to repeat requests
 
-        let handlerWithFirstBlocks = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCKS_IN_NEXT_EPOCH_PER_SHARD:${atEpochHandler.id-1}`).catch(()=>null) || {} // {shardID:{firstBlockCreator,firstBlockHash}}
-
+        
         let handlerWithFirstBlocksAndAefpsPerShard = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCKS_IN_EPOCH_PER_SHARD:${oldEpochFullID}`).catch(()=>null) || {} // {shardID:{firstBlockCreator,firstBlockHash,aefp,firstBlockOnShardFound}}
 
         let entries = Object.entries(leadersSequence)
@@ -338,7 +336,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
             if(!handlerWithFirstBlocksAndAefpsPerShard[shardID].firstBlockOnShardFound){
 
-                let findResult = handlerWithFirstBlocks[shardID] || await getFirstBlockOnEpochOnSpecificShard(atEpochHandler,shardID,getBlock)
+                let findResult = await getFirstBlockOnEpochOnSpecificShard(atEpochHandler,shardID,getBlock)
 
                 if(findResult){
 
