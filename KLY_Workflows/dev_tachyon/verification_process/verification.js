@@ -440,13 +440,15 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
     let vtEpochOldIndex = vtEpochHandler.id
 
+    let nextVtEpochIndex = vtEpochOldIndex + 1
+
     // Stuff related for next epoch
 
-    let nextEpochHash = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(()=>{})
+    let nextEpochHash = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_HASH:${nextVtEpochIndex}`).catch(()=>{})
 
-    let nextEpochQuorum = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>{})
+    let nextEpochQuorum = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_QUORUM:${nextVtEpochIndex}`).catch(()=>{})
 
-    let nextEpochLeadersSequences = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_LEADERS_SEQUENCES:${vtEpochFullID}`).catch(()=>{})
+    let nextEpochLeadersSequences = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_LEADERS_SEQUENCES:${nextVtEpochIndex}`).catch(()=>{})
 
 
     // Get the epoch edge transactions that we need to execute
@@ -542,13 +544,13 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         // Now we can delete useless data from EPOCH_DATA db
 
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(()=>{})
+        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`EPOCH_HASH:${nextVtEpochIndex}`).catch(()=>{})
 
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>{})
+        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`EPOCH_QUORUM:${nextVtEpochIndex}`).catch(()=>{})
 
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`NEXT_EPOCH_LEADERS_SEQUENCES:${vtEpochFullID}`).catch(()=>{})
+        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`EPOCH_LEADERS_SEQUENCES:${nextVtEpochIndex}`).catch(()=>{})
 
-        // await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`EPOCH_EDGE_OPS:${vtEpochFullID}`).catch(()=>{}) // decided to not to delete for API explicit information
+        // await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`EPOCH_EDGE_TXS:${vtEpochFullID}`).catch(()=>{}) // decided to not to delete for API explicit information
 
         await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`FIRST_BLOCKS_IN_NEXT_EPOCH_PER_SHARD:${vtEpochOldIndex-1}`).catch(()=>{})
 
@@ -577,18 +579,15 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
 let tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
-
-    let vtEpochFullID = vtEpochHandler.hash+"#"+vtEpochHandler.id
-
     let vtEpochIndex = vtEpochHandler.id
 
     let nextEpochIndex = vtEpochIndex+1
 
-    let nextEpochHash = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(()=>{})
+    let nextEpochHash = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_HASH:${nextEpochIndex}`).catch(()=>{})
 
-    let nextEpochQuorum = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>{})
+    let nextEpochQuorum = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_QUORUM:${nextEpochIndex}`).catch(()=>{})
 
-    let nextEpochLeadersSequences = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_LEADERS_SEQUENCES:${vtEpochFullID}`).catch(()=>{})
+    let nextEpochLeadersSequences = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_LEADERS_SEQUENCES:${nextEpochIndex}`).catch(()=>{})
 
     let nextEpochHandlerTemplate = {
 
