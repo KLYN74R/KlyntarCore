@@ -114,7 +114,7 @@ FASTIFY_SERVER.get('/txs_list/:shardID/:accountID',async(request,response)=>{
 
         let accountID = request.params.accountID
 
-        let txsList = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:`+shardID+':'+accountID).catch(()=>({err:'Not found'}))
+        let txsList = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:`+shardID+':'+accountID).catch(()=>([]))
 
 
         response
