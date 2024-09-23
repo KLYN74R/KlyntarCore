@@ -1006,7 +1006,7 @@ let getPreparedTxsForParallelization = txsArray => {
 
     for(let transaction of txsArray){
 
-        txIdToOrderMapping[transaction.payload.sig] = txCounter
+        txIdToOrderMapping[transaction.sig] = txCounter
 
         txCounter++
 
