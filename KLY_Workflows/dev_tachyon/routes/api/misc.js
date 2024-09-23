@@ -183,36 +183,6 @@ FASTIFY_SERVER.get('/quorum_urls_and_pubkeys',async(_request,response)=>{
 
 
 
-// Returns urls and pubkeys on current epoch - mostly need for epoch edge transactions / signatures requests   
-FASTIFY_SERVER.get('/quorum_urls_and_pubkeys',async(_request,response)=>{
-
-    response
-        
-    .header('Access-Control-Allow-Origin','*')
-    .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.QUORUM_URLS_AND_PUBKEYS}`)
-
-    let currentEpoch = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
-
-    let responseObject = {
-
-        quorumUrlsAndPubkeys: await getQuorumUrlsAndPubkeys(true,currentEpoch),
-
-        epochMetadata:{
-
-            id: currentEpoch.id,
-            hash: currentEpoch.hash,
-            startTimestamp: currentEpoch.startTimestamp,
-
-        }
-
-    }
-
-    response.send(responseObject)
-
-})
-
-
-
 
 // Returns data that shows your node synchronization height on shards
 FASTIFY_SERVER.get('/synchronization_stats',(_request,response)=>{
