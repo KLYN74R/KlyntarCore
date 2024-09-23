@@ -488,7 +488,6 @@ let setGenesisToState=async()=>{
     }
     
 
-    // Make template, but anyway - we'll find checkpoints on hostchains
     WORKING_THREADS.APPROVEMENT_THREAD.EPOCH = {
 
         id:0,
@@ -515,10 +514,8 @@ let setGenesisToState=async()=>{
     let atEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
 
-    //We get the quorum for VERIFICATION_THREAD based on own local copy of VERIFICATION_STATS_PER_POOL state
     vtEpochHandler.quorum = getCurrentEpochQuorum(vtEpochHandler.poolsRegistry,WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS,nullHash)
 
-    //...However, quorum for APPROVEMENT_THREAD might be retrieved from VERIFICATION_STATS_PER_POOL of checkpoints. It's because both threads are async
     atEpochHandler.quorum = getCurrentEpochQuorum(atEpochHandler.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS,nullHash)
 
 
@@ -667,7 +664,7 @@ export let prepareBlockchain=async()=>{
 
         TEMP_CACHE:new Map(),  // simple key=>value mapping to be used as temporary cache for epoch
     
-        FINALIZATION_STATS:new Map(), // mapping( validatorID => {index,hash,afp} ). Used to start voting for checkpoints.      Each pair is a special handler where key is a pubkey of appropriate validator and value is the ( index <=> id ) which will be in checkpoint
+        FINALIZATION_STATS:new Map(), // mapping( validatorID => {index,hash,afp} ). Used to know inde/hash of last approved block by validator.
     
         EPOCH_EDGE_TRANSACTIONS_MEMPOOL:[],  // default mempool for epoch edge transactions
         

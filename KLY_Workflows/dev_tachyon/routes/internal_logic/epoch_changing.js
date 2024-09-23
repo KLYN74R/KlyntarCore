@@ -95,7 +95,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
                 },
 
-                metadataForCheckpoint:{
+                lastBlockProposition:{
                     
                     index:,
                     hash:,
@@ -108,7 +108,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
                         proofs:{
                      
-                            pubKey0:signa0,         => prevBlockHash+blockID+hash+AT.CHECKPOINT.HASH+"#"+AT.CHECKPOINT.id
+                            pubKey0:signa0,         => prevBlockHash+blockID+hash+AT.EPOCH.hash+"#"+AT.EPOCH.id
                             ...
                         
                         }                        
@@ -137,7 +137,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
         
             [If proposed.currentLeader >= local.currentLeader]:
 
-                1) Verify index & hash & afp in <metadataForCheckpoint>
+                1) Verify index & hash & afp in <lastBlockProposition>
                 
                 2) If proposed height >= local version - generate and return signature ED25519_SIG('EPOCH_DONE'+shard+lastAuth+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId)
 
@@ -165,7 +165,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
                 currentLeader:<index>,
                 
-                metadataForCheckpoint:{
+                lastBlockProposition:{
                 
                     index,
                     hash,
@@ -201,7 +201,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
             if(responseStructure[shardID]) continue
 
-            if(typeof shardID === 'string' && typeof proposition.currentLeader === 'number' && typeof proposition.afpForFirstBlock === 'object' && typeof proposition.metadataForCheckpoint === 'object' && typeof proposition.metadataForCheckpoint.afp === 'object'){
+            if(typeof shardID === 'string' && typeof proposition.currentLeader === 'number' && typeof proposition.afpForFirstBlock === 'object' && typeof proposition.lastBlockProposition === 'object' && typeof proposition.lastBlockProposition.afp === 'object'){
 
                 // Get the local version of SHARDS_LEADERS_HANDLERS and FINALIZATION_STATS
 
@@ -222,7 +222,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
                 let blockIdOfFirstBlock = atEpochHandler.id+':'+pubKeyOfCurrentLeaderOnShard+':0' // first block has index 0 - numeration from 0
 
-                if(blockIdOfFirstBlock === proposition.afpForFirstBlock.blockID && proposition.metadataForCheckpoint.index>=0){
+                if(blockIdOfFirstBlock === proposition.afpForFirstBlock.blockID && proposition.lastBlockProposition.index>=0){
 
                     // Verify the AFP for first block
 
@@ -241,11 +241,11 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
                 if(proposition.currentLeader === localIndexOfLeader){
 
-                    if(epochManagerForLeader.index === proposition.metadataForCheckpoint.index && epochManagerForLeader.hash === proposition.metadataForCheckpoint.hash){
+                    if(epochManagerForLeader.index === proposition.lastBlockProposition.index && epochManagerForLeader.hash === proposition.lastBlockProposition.hash){
                         
                         // Send AEFP signature
 
-                        let {index,hash} = proposition.metadataForCheckpoint
+                        let {index,hash} = proposition.lastBlockProposition
 
                         let dataToSign = 'EPOCH_DONE'+shardID+proposition.currentLeader+index+hash+hashOfFirstBlockByLastLeaderInThisEpoch+epochFullID
     
@@ -258,11 +258,11 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
                         }
 
                             
-                    }else if(epochManagerForLeader.index < proposition.metadataForCheckpoint.index){
+                    }else if(epochManagerForLeader.index < proposition.lastBlockProposition.index){
 
                         // Verify AGGREGATED_FINALIZATION_PROOF & upgrade local version & send AEFP signature
 
-                        let {index,hash,afp} = proposition.metadataForCheckpoint
+                        let {index,hash,afp} = proposition.lastBlockProposition
 
                         let isOk = await verifyAggregatedFinalizationProof(afp,atEpochHandler)
 
@@ -311,7 +311,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
                         }
 
 
-                    }else if(epochManagerForLeader.index > proposition.metadataForCheckpoint.index){
+                    }else if(epochManagerForLeader.index > proposition.lastBlockProposition.index){
 
                         // Send 'UPGRADE' msg
 
@@ -321,7 +321,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
                             
                             currentLeader:localIndexOfLeader,
                 
-                            metadataForCheckpoint:epochManagerForLeader // {index,hash,afp}
+                            lastBlockProposition:epochManagerForLeader // {index,hash,afp}
                     
                         }
 
@@ -337,7 +337,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
                             
                         currentLeader:localIndexOfLeader,
                 
-                        metadataForCheckpoint:epochManagerForLeader // {index,hash,afp}
+                        lastBlockProposition:epochManagerForLeader // {index,hash,afp}
                     
                     }
 

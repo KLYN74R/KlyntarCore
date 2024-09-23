@@ -153,7 +153,7 @@ let checkAggregatedLeaderRotationProofValidity = async (pubKeyOfSomePreviousLead
 
     }
 
-        Check the signed string: `LEADER_ROTATION_PROOF:${reassignedPoolPubKey}:${firstBlockHash}:${skipIndex}:${skipHash}:${epochFullID}`
+        Check the signed string: `LEADER_ROTATION_PROOF:${poolPubKeyThatWasLeader}:${firstBlockHash}:${skipIndex}:${skipHash}:${epochFullID}`
 
         Also, if skipIndex === 0 - it's signal that firstBlockHash = skipHash
 
@@ -333,7 +333,7 @@ let findInfoAboutLastBlocksByPreviousShardsLeaders = async (vtEpochHandler,shard
     
     if(!WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS) WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS = {}
 
-    let infoAboutFinalBlocksByPool = new Map() // poolID => {reassignedPool:ALRP,reassignedPool0:ALRP,...reassignedPoolX:ALRP}
+    let infoAboutFinalBlocksByPool = new Map() // poolID => {poolThatWasLeader_A:ALRP,poolThatWasLeader_B:ALRP,...poolThatWasLeader_X:ALRP}
         
 
     // Start the cycle in reverse order from <aefp.lastLeader>
@@ -379,7 +379,7 @@ let findInfoAboutLastBlocksByPreviousShardsLeaders = async (vtEpochHandler,shard
 
             if(isOK){
 
-                infoAboutFinalBlocksByPool.set(poolPubKey,infoAboutFinalBlocksInThisEpoch) // filteredInfoForVerificationThread = {reassignedPool0:{index,hash},reassignedPool1:{index,hash},...reassignedPoolN:{index,hash}}
+                infoAboutFinalBlocksByPool.set(poolPubKey,infoAboutFinalBlocksInThisEpoch) // filteredInfoForVerificationThread = {Pool0:{index,hash},Pool1:{index,hash},...PoolN:{index,hash}}
 
                 infoAboutLastBlocksByPreviousPool = infoAboutFinalBlocksInThisEpoch
 
@@ -388,8 +388,6 @@ let findInfoAboutLastBlocksByPreviousShardsLeaders = async (vtEpochHandler,shard
         }
 
     }
-
-    // In direct way - use the filtratratedReassignment to build the INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS[shardID] based on ALRP
 
     for(let poolPubKey of oldLeadersSequenceForShard){
 
@@ -425,7 +423,7 @@ let findInfoAboutLastBlocksByPreviousShardsLeaders = async (vtEpochHandler,shard
             ...
         }
 
-        Using this chains we'll finish the verification process to get the ranges of checkpoint
+        Using this chains we'll finish the verification process
 
         [1] WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS with structure:
 
@@ -592,7 +590,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
         customLog(`Epoch on verification thread was updated => \x1b[34;1m${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash}#${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id}`,logColors.GREEN)
         
 
-        //_______________________Check the version required for the next checkpoint________________________
+        //_______________________Check the version required for the next epoch________________________
 
         if(isMyCoreVersionOld('VERIFICATION_THREAD')){
 
@@ -665,7 +663,7 @@ let tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
             }
 
-            //____________After we get the first blocks for epoch X+1 - get the AEFP from it and build the reassignment metadata to finish epoch X____________
+            //____________After we get the first blocks for epoch X+1 - get the AEFP from it and build the data for VT to finish epoch X____________
 
             let firstBlockOnThisShardInThisEpoch = await getBlock(nextEpochIndex,handlerWithFirstBlocksPerShardOnNextEpoch[shardID].firstBlockCreator,0)
 
@@ -688,7 +686,7 @@ let tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
             for(let shardID of Object.keys(nextEpochLeadersSequences)){
 
-                // Now, using this AEFP (especially fields lastLeader,lastIndex,lastHash,firstBlockHash) build reassignment metadata to finish epoch for this shard
+                // Now, using this AEFP (especially fields lastLeader,lastIndex,lastHash,firstBlockHash) build metadata to finish VT thread for this epoch and shard
                 
                 if(!WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS[shardID]) await findInfoAboutLastBlocksByPreviousShardsLeaders(vtEpochHandler,shardID,handlerWithFirstBlocksPerShardOnNextEpoch[shardID].aefp)
 
@@ -1274,7 +1272,7 @@ export let startVerificationThread=async()=>{
         
     }else if(currentEpochIsFresh && tempInfoAboutFinalBlocksByPreviousPoolsOnShard){
 
-        // Take the pool by it's position in reassignment chains
+        // Take the pool by it's position
         
         let poolToVerifyRightNow = vtEpochHandler.leadersSequence[currentShardToCheck][tempInfoAboutFinalBlocksByPreviousPoolsOnShard.currentToVerify]
         

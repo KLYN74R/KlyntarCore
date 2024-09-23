@@ -105,7 +105,7 @@ let getAggregatedLeaderRotationProof = async (epochHandler,pubKeyOfOneOfPrevious
 
     /*
         This function is used once you become shard leader and you need to get the ALRPs for all the previous leaders
-        on this shard till the pool which was reassigned on non-zero height
+        on this shard till the pool which created at least one block
     */
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
