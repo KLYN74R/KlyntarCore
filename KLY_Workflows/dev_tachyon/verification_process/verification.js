@@ -1005,15 +1005,16 @@ let getPreparedTxsForParallelization = txsArray => {
 
     let txCounter = 0
 
+
     for(let transaction of txsArray){
 
-        txIdToOrderMapping[transaction.sig] = txCounter
+        txIdToOrderMapping[transaction.payload.sig] = txCounter
 
         txCounter++
 
-        if(transaction.touched){
+        if(Array.isArray(transaction?.payload?.touchedAccounts)){
 
-            for(let touchedAccount of transaction.touched){
+            for(let touchedAccount of transaction.payload.touchedAccounts){
 
                 if(numberOfAccountTouchesPerAccount.has(touchedAccount)){
     
@@ -1037,9 +1038,9 @@ let getPreparedTxsForParallelization = txsArray => {
 
     for(let transaction of txsArray){
 
-        if(transaction.touched){
+        if(Array.isArray(transaction?.payload?.touchedAccounts)){
 
-            let eachTouchedAccountInTxHasOnePoint = transaction.touched.every(account => numberOfAccountTouchesPerAccount.get(account) === 1)
+            let eachTouchedAccountInTxHasOnePoint = transaction.payload.touchedAccounts.every(account => numberOfAccountTouchesPerAccount.get(account) === 1)
 
             if(eachTouchedAccountInTxHasOnePoint){
 
@@ -1064,9 +1065,9 @@ let getPreparedTxsForParallelization = txsArray => {
 
         let accountThatChangesMoreThanOnce
 
-        if(transaction.touched){
+        if(Array.isArray(transaction?.payload?.touchedAccounts)){
 
-            for(let accountID of transaction.touched){
+            for(let accountID of transaction.payload.touchedAccounts){
 
                 if(numberOfAccountTouchesPerAccount.get(accountID) > 1){
     
