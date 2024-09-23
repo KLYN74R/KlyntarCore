@@ -331,7 +331,7 @@ export let VERIFIERS = {
 
         {
             bytecode:<hexString>,
-            lang:<RUST|ASC>,
+            lang:<Rust|AssemblyScript>,
             constructorParams:{}
         }
 
@@ -563,7 +563,12 @@ export let VERIFIERS = {
 
                 let touchedAccounts = [tx.from, tx.to]
 
-                if(receipt.contractAddress) touchedAccounts.push(receipt.contractAddress)
+                if(receipt.contractAddress){
+
+                    touchedAccounts.push(receipt.contractAddress)
+
+                    atomicBatch.put('IS_CONTRACT:'+receipt.contractAddress,true)
+                }
 
                 trackTransactionsList(originShard,tx.hash,'EVM_CALL','ECDSA',payedFee,touchedAccounts)
 
