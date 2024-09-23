@@ -74,14 +74,14 @@ export let TXS_FILTERS = {
 
         {
             bytecode:<hexString>,
-            lang:<RUST|ASC>,
+            lang:<Rust|AssemblyScript>,
             constructorParams:{}
         }
 
     */
     WVM_CONTRACT_DEPLOY:async (tx,originShard) => {
 
-        return  typeof tx.payload?.bytecode==='string' && (tx.payload.lang==='RUST'||tx.payload.lang==='ASC') && typeof tx.payload.constructorParams === 'object'
+        return  typeof tx.payload?.bytecode==='string' && (tx.payload.lang==='Rust'||tx.payload.lang==='AssemblyScript') && typeof tx.payload.constructorParams === 'object'
                 &&
                 await overviewToCheckIfTxIsOk(tx,originShard)
 

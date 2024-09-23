@@ -331,7 +331,7 @@ export let VERIFIERS = {
 
         {
             bytecode:<hexString>,
-            lang:<RUST|ASC>,
+            lang:<Rust|AssemblyScript>,
             constructorParams:{}
         }
 
