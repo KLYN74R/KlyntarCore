@@ -225,11 +225,12 @@ let getAggregatedEpochFinalizationProofForPreviousEpoch = async shardID => {
 
 
 
+
 let getAggregatedLeaderRotationProof = async (epochHandler,pubKeyOfOneOfPreviousLeader,hisIndexInLeadersSequence,shardID) => {
 
     /*
         This function is used once you become shard leader and you need to get the ALRPs for all the previous leaders
-        on this shard till the pool which was reassigned on non-zero height
+        on this shard till the pool which created at least one block
     */
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
@@ -253,7 +254,7 @@ let getAggregatedLeaderRotationProof = async (epochHandler,pubKeyOfOneOfPrevious
 
 
     // Prepare the template that we're going to send to quorum to get the ALRP
-
+    
     let firstBlockIDByThisLeader = epochHandler.id+':'+pubKeyOfOneOfPreviousLeader+':0' // epochID:PubKeyOfCreator:0 - first block in epoch
 
     let afpForFirstBlock = await getVerifiedAggregatedFinalizationProofByBlockId(firstBlockIDByThisLeader,epochHandler)

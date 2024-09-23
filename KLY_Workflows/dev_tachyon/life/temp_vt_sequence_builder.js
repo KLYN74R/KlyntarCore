@@ -20,7 +20,7 @@ export let findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards=async()=>{
 
     /*
     
-        [+] In this function we should time by time ask for ALRPs for pools to build the reassignment chains
+        [+] In this function we should time by time ask for ALRPs for pools to understand of how to continue VERIFICAION_THREAD
 
         [+] Use VT.TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS
 
@@ -71,8 +71,6 @@ export let findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards=async()=>{
     let quorumMembers = await getQuorumUrlsAndPubkeys(true)
 
     let randomTarget = getRandomFromArray(quorumMembers)
-    
-    //___________________Ask quorum member about last block info. Grab this results, verify the proofs and build the temporary reassignment chains___________________
 
     let localVersionOfCurrentLeaders = {} // shardID => assumptionAboutIndexOfCurrentLeader
 
@@ -83,7 +81,7 @@ export let findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards=async()=>{
     }
 
 
-    // Make request to /data_to_build_temp_data_for_verification_thread. Returns => {shardID:<aggregatedSkipProofForProposedLeader>}
+    // Make request to /data_to_build_temp_data_for_verification_thread
 
     let optionsToSend = {
 
@@ -106,13 +104,13 @@ export let findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards=async()=>{
 
         {
 
-            shard_0:{proposedLeaderIndex,firstBlockByProposedLeader,afpForSecondBlockProposedLeader},
+            shard_0:{proposedIndexOfLeader,firstBlockByCurrentLeader,afpForSecondBlockByCurrentLeader},
 
-            shard_1:{proposedLeaderIndex,firstBlockByProposedLeader,afpForSecondBlockProposedLeader},
+            shard_1:{proposedIndexOfLeader,firstBlockByCurrentLeader,afpForSecondBlockByCurrentLeader},
 
             ...
 
-            shard_N:{proposedLeaderIndex,firstBlockByProposedLeader,afpForSecondBlockProposedLeader}
+            shard_N:{proposedIndexOfLeader,firstBlockByCurrentLeader,afpForSecondBlockByCurrentLeader}
 
         }
 
@@ -120,9 +118,9 @@ export let findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards=async()=>{
         -----------------------------------------------[Decomposition]-----------------------------------------------
 
 
-        [0] proposedAuthorityIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the APPROVEMENT_THREAD.EPOCH.reassignmentChains[<shardID>][proposedAuthorityIndex]
+        [0] proposedIndexOfLeader - index of current shard leader. To get the pubkey - take the APPROVEMENT_THREAD.EPOCH.leadersSequence[<shardID>][proposedIndex]
 
-        [1] firstBlockByCurrentLeader - default block structure with ASP for all the previous pools in a queue
+        [1] firstBlockByCurrentLeader - just block
 
         [2] afpForSecondBlockByCurrentLeader default AFP structure -> 
 
@@ -144,7 +142,7 @@ export let findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards=async()=>{
 
             -----------------------------------------------[What to do next?]-----------------------------------------------
         
-            Compare the <proposedAuthorityIndex> with our local pointer tempReassignmentOnVerificationThread[approvementThreadCheckpointFullID][shardID].currentLeader
+            Compare the <proposedAuthorityIndex> with our local pointer tempInfoAboutLastBlocksByPreviousPoolsOnShards[approvementThreadEpochFullID][shardID].currentLeader
 
             In case our local version has bigger index - ignore
 
@@ -158,7 +156,7 @@ export let findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards=async()=>{
 
                 ---------------------------------[After the verification of all the responses?]---------------------------------
 
-                Start to build the temporary reassignment chains
+                Start restoring VT
 
     */
 
@@ -203,7 +201,7 @@ export let findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards=async()=>{
                             
                             ________________ What to do next? ________________
 
-                            Now we know that proposed leader has created some first block(firstBlockByProposedLeader)
+                            Now we know that proposed leader has created some first block(firstBlockByCurrentLeader)
 
                             and we verified the AFP so it's clear proof that block is 100% accepted and the data inside is valid and will be a part of epoch data
 
@@ -211,7 +209,7 @@ export let findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards=async()=>{
 
                             Now, start the cycle in reverse order on range
 
-                            [proposedLeaderIndex-1 ; localVersionOfCurrentLeaders[shardID]]
+                            [proposedIndexOfLeader-1 ; localVersionOfCurrentLeaders[shardID]]
                             
                             
 
@@ -287,7 +285,7 @@ export let findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards=async()=>{
 
                                 if(shouldChangeThisShard){
 
-                                    // Update the reassignment data
+                                    // Update the data about last block index and hash
 
                                     let tempReassignmentChain = tempInfoAboutLastBlocksByPreviousPoolsOnShards[vtEpochFullID][shardID].infoAboutFinalBlocksInThisEpoch // poolPubKey => {index,hash}
 

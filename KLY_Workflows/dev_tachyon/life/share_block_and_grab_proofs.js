@@ -178,9 +178,7 @@ let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
                                     }
 
                                 }
-
                             }
-
 
                             if(parsedData.finalizationProof && proofsGrabber.huntingForHash === parsedData.votedForHash && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
 
@@ -443,7 +441,6 @@ let runFinaliationProofsGrabbing = async (epochHandler,proofsGrabber) => {
         // Store locally
         await BLOCKCHAIN_DATABASES.EPOCH_DATA.put('AFP:'+blockIDForHunting,aggregatedFinalizationProof).catch(()=>false)
 
-
         // Delete finalization proofs that we don't need more
         FINALIZATION_PROOFS.delete(blockIDForHunting)
 
@@ -527,8 +524,9 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
 
     if(!proofsGrabber || proofsGrabber.epochID !== atEpochHandler.id){
 
-        //If we still works on the old checkpoint - continue
-        //Otherwise,update the latest height/hash and send them to the new QUORUM
+        // If we still works on the old epoch - continue
+        // Otherwise,update the latest height/hash and send them to the new QUORUM
+        
         proofsGrabber = await useTemporaryDb('get',DATABASE,'PROOFS_GRABBER').catch(()=>false)
 
         if(!proofsGrabber){

@@ -35,7 +35,7 @@ import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 */
 
-// Function to return aggregated skip proofs for proposed authorities✅
+// Function to return info about current leaders on shards and afpsForSecondBlock to help nodes to know the last blocks by previous leaders and let VT continue to work✅
 
 FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLOAD_SIZE},async(request,response)=>{
 
@@ -53,17 +53,14 @@ FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimi
     }
 
 
-    let proposedIndexesOfLeaders = JSON.parse(request.body) // format {shardID:index}
+    let proposedIndexesOfLeadersPerShard = JSON.parse(request.body) // format {shardID:index}
 
 
-    if(typeof proposedIndexesOfLeaders === 'object'){
+    if(typeof proposedIndexesOfLeadersPerShard === 'object'){
 
         let objectToReturn = {}
 
-        // Here we should return the ASP for proposed authorities
-
-        // eslint-disable-next-line no-unused-vars
-        for(let [shardID, _proposedIndexOfLeader] of Object.entries(proposedIndexesOfLeaders)){
+        for(let shardID of Object.keys(proposedIndexesOfLeadersPerShard)){
 
             // Try to get the current leader on shard
 

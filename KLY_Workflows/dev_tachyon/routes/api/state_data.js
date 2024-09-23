@@ -1,10 +1,10 @@
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../blockchain_preparation.js'
+
 import {getFromState} from '../../common_functions/state_interactions.js'
 
 import {KLY_EVM} from '../../../../KLY_VirtualMachines/kly_evm/vm.js'
 
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
-
-import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../blockchain_preparation.js'
 
 import Web3 from 'web3'
 
@@ -104,6 +104,7 @@ FASTIFY_SERVER.get('/tx_receipt/:txID',(request,response)=>{
 
 
 
+
 FASTIFY_SERVER.get('/txs_list/:shardID/:accountID',async(request,response)=>{
 
 
@@ -187,6 +188,7 @@ FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
                 let balanceInKlyUnits = Number(Web3.utils.fromWei(account.balance.toString(),'ether'))
 
                 let nonce = Number(account.nonce)
+
 
                 if(contractData){
 

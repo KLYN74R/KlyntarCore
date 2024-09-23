@@ -5,7 +5,6 @@ import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 
 
-
 /*
             
     The structure of AGGREGATED_EPOCH_FINALIZATION_PROOF is

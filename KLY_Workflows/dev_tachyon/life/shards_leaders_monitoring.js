@@ -54,7 +54,7 @@ export let setLeadersSequenceForShards = async (epochHandler,epochSeed) => {
 
     
     //_______________________________________ Now assign the validators to shards for new epoch ___________________________________________________
-
+    
     let assignToShardWithIndex = 0
 
     for(let challenge of sortedChallenges){

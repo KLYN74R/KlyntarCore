@@ -111,12 +111,11 @@ export let executeEpochEdgeTransaction = async(threadID,tx) => {
 
 
 
-// Use it to find checkpoints on hostchains, perform them and join to QUORUM by finding the latest valid checkpoint
 
 export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
 
-    //_________________________FIND THE NEXT CHECKPOINT AND EXECUTE EPOCH EDGE TRANSACTIONS INSTANTLY_____________________________
+    //_________________________FIND THE NEXT EPOCH AND EXECUTE EPOCH EDGE TRANSACTIONS INSTANTLY_____________________________
 
     /*
     
@@ -149,7 +148,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                 
                 }
 
-                Data that must be signed by 2/3N+1 => 'EPOCH_DONE'+shard+lastLeader+lastIndex+lastHash+hashOfFirstBlockByLastLeader+checkpointFullID
+                Data that must be signed by 2/3N+1 => 'EPOCH_DONE'+shard+lastLeader+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullID
 
         3. Once we find the AEFPs for ALL the shards - it's a signal to start to find the first X blocks in current epoch for each shard
 
@@ -186,9 +185,9 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
         6. Once we find all of them - extract EPOCH_EDGE_TRANSACTIONS from block headers and run it in a sync mode
 
-        7. Increment value of checkpoint index(checkpoint.id) and recount new hash(checkpoint.hash)
+        7. Increment value of epoch index(epoch.id) and recount new hash(epoch.hash)
     
-        8. Prepare new object in TEMP(checkpointFullID) and set new version of checkpoint on AT
+        8. Prepare new object in TEMP(epochFullID) and set new version of epoch on AT
     
     
     */
@@ -482,7 +481,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                 })
 
                
-                // Now, after the execution we can change the checkpoint id and get the new hash + prepare new temporary object
+                // Now, after the execution we can change the epoch id and get the new hash + prepare new temporary object
                 
                 let nextEpochId = currentEpochHandler.id + 1
 
@@ -549,7 +548,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 customLog(`Epoch on approvement thread was updated => \x1b[34;1m${nextEpochHash}#${nextEpochId}`,logColors.GREEN)
 
-                //_______________________Check the version required for the next checkpoint________________________
+                //_______________________Check the version required for the next epoch________________________
 
 
                 if(isMyCoreVersionOld('APPROVEMENT_THREAD')){
@@ -575,7 +574,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 
                 
-                //________________________________ If it's fresh checkpoint and we present there as a member of quorum - then continue the logic ________________________________
+                //________________________________ If it's fresh epoch and we present there as a member of quorum - then continue the logic ________________________________
 
 
                 let iAmInTheQuorum = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum.includes(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
@@ -583,7 +582,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 if(epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD) && iAmInTheQuorum){
 
-                    // Fill the checkpoints manager with the latest data
+                    // Fill with the null-data
 
                     let currentEpochManager = nextTemporaryObject.FINALIZATION_STATS
 

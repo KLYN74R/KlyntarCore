@@ -121,7 +121,7 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
     
     }else if(!currentEpochMetadata.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+block.creator)){
     
-        // Add the sync flag to prevent creation proofs during the process of skip this pool
+        // Smth like mutex
         currentEpochMetadata.SYNCHRONIZER.set('GENERATE_FINALIZATION_PROOFS:'+block.creator,true)
             
         let shardID
@@ -427,7 +427,7 @@ let returnFinalizationProofBasedOnTmbProof=async(parsedData,connection)=>{
     
     }else if(!currentEpochMetadata.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+blockCreator)){
     
-        // Add the sync flag to prevent creation proofs during the process of skip this pool
+        // Smth like mutex
         
         currentEpochMetadata.SYNCHRONIZER.set('GENERATE_FINALIZATION_PROOFS:'+blockCreator,true)
 
@@ -660,7 +660,7 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
 
             Route to return LRP(leader rotation proof)
     
-            Returns the signature if requested height to skip >= than our own
+            Returns the signature if requested height >= than our own
     
             Otherwise - send the UPDATE message with FINALIZATION_PROOF 
 
@@ -717,22 +717,7 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
 [Response]:
 
 
-[1] In case we have skip handler for this pool in SKIP_HANDLERS and if <skipData> in skip handler has <= index than in <skipData> from request we can response
-
-    Also, bear in mind that we need to sign the hash of ASP for previous pool (field <previousAspHash>). We need this to verify the chains of ASPs by hashes not signatures.
-
-
-
-    This will save us in case of a large number of ASPs that need to be checked
-    
-    Inserting an ASP hash for a pool that is 1 position earlier allows us to check only 1 signature and N hashes in the ASP chain
-    
-    Compare this with a case when we need to verify N signatures
-    
-    Obviously, the hash generation time and comparison with the <previousAspHash> field is cheaper than checking the aggregated signature (if considered within the O notation)
-        
-
-    Finally, we'll send this object as response
+[1] In case we have info about voting for this pool in FINALIZATION_STATS and if height in handler has <= index than in <skipData> from request we can response
 
     {
         type:'OK',
@@ -740,7 +725,7 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
     }
 
 
-[2] In case we have bigger index in skip handler than in proposed <skipData> - response with 'UPDATE' message:
+[2] In case we have bigger index in handler than in proposed <skipData> - response with 'UPDATE' message:
 
     {
         type:'UPDATE',
@@ -858,14 +843,14 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
             // We need the hash of first block to fetch it over the network and extract the aggregated leader rotation proof for previous pool, take the hash of it and include to final signature
             
 
-            let dataToSignForSkipProof, firstBlockAfpIsOk = false
+            let dataToSignForLeaderRotation, firstBlockAfpIsOk = false
 
 
             if(index === -1){
 
                 // If skipIndex is -1 then sign the hash '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'(null,default hash) as the hash of firstBlockHash
                 
-                dataToSignForSkipProof = `LEADER_ROTATION_PROOF:${requestForLeaderRotationProof.poolPubKey}:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:${index}:${'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}:${epochFullID}`
+                dataToSignForLeaderRotation = `LEADER_ROTATION_PROOF:${requestForLeaderRotationProof.poolPubKey}:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:${index}:${'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}:${epochFullID}`
 
                 firstBlockAfpIsOk = true
 
@@ -880,7 +865,7 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
 
                     let firstBlockHash = requestForLeaderRotationProof.afpForFirstBlock.blockHash
 
-                    dataToSignForSkipProof = `LEADER_ROTATION_PROOF:${requestForLeaderRotationProof.poolPubKey}:${firstBlockHash}:${index}:${hash}:${epochFullID}`
+                    dataToSignForLeaderRotation = `LEADER_ROTATION_PROOF:${requestForLeaderRotationProof.poolPubKey}:${firstBlockHash}:${index}:${hash}:${epochFullID}`
 
                     firstBlockAfpIsOk = true
 
@@ -892,7 +877,7 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
 
             if(firstBlockAfpIsOk){
 
-                let skipMessage = {
+                let leaderRotationProofMessage = {
 
                     route:'get_leader_rotation_proof',
 
@@ -902,10 +887,10 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
                     
                     type:'OK',
 
-                    sig:await signEd25519(dataToSignForSkipProof,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
+                    sig:await signEd25519(dataToSignForLeaderRotation,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
                 }
 
-                connection.sendUTF(JSON.stringify(skipMessage))
+                connection.sendUTF(JSON.stringify(leaderRotationProofMessage))
                 
             } else connection.sendUTF(JSON.stringify({err:`Wrong signatures in <afpForFirstBlock>`}))
              

@@ -162,7 +162,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
             
                 Thanks to verification process of block 0 on route POST /block (see routes/main.js) we know that each block created by shard leader will contain all the ALRPs
         
-                1) Start to build so called CHECKPOINT_PROPOSITION. This object has the following structure
+                1) Start to build epoch finalization proposition. This object has the following structure
 
 
                 {
@@ -171,15 +171,15 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
                         currentLeader:<int - pointer to current leader of shard based on AT.EPOCH.leadersSequence[shardID]>
 
-                        metadataForCheckpoint:{
+                        lastBlockProposition:{
                             index:,
                             hash:,
                             
                             afp:{
 
-                                prevBlockHash:<must be the same as metadataForCheckpoint.hash>
+                                prevBlockHash:<must be the same as lastBlockProposition.hash>
 
-                                blockID:<must be next to metadataForCheckpoint.index>,
+                                blockID:<must be next to lastBlockProposition.index>,
 
                                 blockHash,
 
@@ -210,11 +210,11 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
                 }
 
 
-                2) Take the <metadataForCheckpoint> for <currentLeader> from TEMP.get(<checkpointID>).FINALIZATION_STATS
+                2) Take the <lastBlockProposition> for <currentLeader> from TEMP.get(<epochFullID>).FINALIZATION_STATS
 
                 3) If nothing in FINALIZATION_STATS - then set index to -1 and hash to default(0123...)
 
-                4) Send CHECKPOINT_PROPOSITION to POST /checkpoint_proposition to all(or at least 2/3N+1) quorum members
+                4) Send epoch propostion to POST /epoch_proposition to all(or at least 2/3N+1) quorum members
 
 
                 ____________________________________________After we get responses____________________________________________
@@ -261,14 +261,14 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
     
                     afpForFirstBlock:{},
     
-                    metadataForCheckpoint:currentEpochMetadata.FINALIZATION_STATS.get(pubKeyOfLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+                    lastBlockProposition:currentEpochMetadata.FINALIZATION_STATS.get(pubKeyOfLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
     
                 }
     
                 // In case we vote for index > 0 - we need to add the AFP proof to proposition as a proof that first block by this leader has such hash
                 // This will be added to AEFP and used on verification thread
     
-                if(epochFinishProposition[shardID].metadataForCheckpoint.index >= 0){
+                if(epochFinishProposition[shardID].lastBlockProposition.index >= 0){
     
                     let firstBlockID = atEpochHandler.id+':'+pubKeyOfLeader+':0'
     
@@ -311,7 +311,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
                                 -----------------------------[In case 'UPGRADE']----------------------------
 
                                 currentLeader:<index>,
-                                metadataForCheckpoint:{
+                                lastBlockProposition:{
                                     index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}
                                 }
 
@@ -345,7 +345,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
                                 // Verify EPOCH_FINALIZATION_PROOF signature and store to mapping
 
-                                let dataThatShouldBeSigned = 'EPOCH_DONE'+shardID+metadata.currentLeader+metadata.metadataForCheckpoint.index+metadata.metadataForCheckpoint.hash+metadata.afpForFirstBlock.blockHash+epochFullID
+                                let dataThatShouldBeSigned = 'EPOCH_DONE'+shardID+metadata.currentLeader+metadata.lastBlockProposition.index+metadata.lastBlockProposition.hash+metadata.afpForFirstBlock.blockHash+epochFullID
 
                                 let isOk = await verifyEd25519(dataThatShouldBeSigned,response.sig,descriptor.pubKey)
 
@@ -356,7 +356,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
                                 // Check the AFP and update the local data
 
-                                let {index,hash,afp} = response.metadataForCheckpoint
+                                let {index,hash,afp} = response.lastBlockProposition
                             
                                 let pubKeyOfProposedLeader = leadersSequencePerShard[shardID][response.currentLeader]
                                 
@@ -411,9 +411,9 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
                     lastLeader:metadata.currentLeader,
                     
-                    lastIndex:metadata.metadataForCheckpoint.index,
+                    lastIndex:metadata.lastBlockProposition.index,
                     
-                    lastHash:metadata.metadataForCheckpoint.hash,
+                    lastHash:metadata.lastBlockProposition.hash,
 
                     hashOfFirstBlockByLastLeader:metadata.afpForFirstBlock.blockHash,
 
