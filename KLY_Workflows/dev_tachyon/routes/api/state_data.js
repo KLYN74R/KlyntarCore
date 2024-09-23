@@ -181,7 +181,7 @@ FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
 
             let account = await KLY_EVM.getAccount(accountID).catch(()=>null)
 
-            let isContract = await BLOCKCHAIN_DATABASES.STATE.get(`IS_CONTRACT:${accountID}`).catch(()=>false)
+            let contractData = await BLOCKCHAIN_DATABASES.STATE.get(`EVM_CONTRACT_DATA:${accountID}`).catch(()=>false)
 
             if(account){
 
@@ -190,9 +190,17 @@ FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
                 let nonce = Number(account.nonce)
 
 
-                if(isContract){
+                if(contractData){
 
-                    data = { type:"contract", lang:"Solidity",  balance:balanceInKlyUnits, uno:0, nonce, gas:0, storages:['DEFAULT'], bytecode:""}
+                    data = {
+                        
+                        type:"contract", lang:"Solidity",  balance:balanceInKlyUnits, uno:0, nonce, gas:0,
+                        
+                        storages:['DEFAULT'], bytecode:"",
+                        
+                        storageAbstractionLastPayment: contractData.storageAbstractionLastPayment
+                    
+                    }
 
                 } else {
 

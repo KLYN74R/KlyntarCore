@@ -567,7 +567,8 @@ export let VERIFIERS = {
 
                     touchedAccounts.push(receipt.contractAddress)
 
-                    atomicBatch.put('IS_CONTRACT:'+receipt.contractAddress,true)
+                    atomicBatch.put('EVM_CONTRACT_DATA:'+receipt.contractAddress,{storageAbstractionLastPayment:WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id})
+                    
                 }
 
                 trackTransactionsList(originShard,tx.hash,'EVM_CALL','ECDSA',payedFee,touchedAccounts)
