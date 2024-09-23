@@ -559,6 +559,20 @@ export let VERIFIERS = {
 
                 atomicBatch.put('TX:'+tx.hash,{tx,receipt,originShard})
 
+                let payedFee = Number(tx.gasLimit * tx.gasPrice)
+
+                let touchedAccounts = [tx.from, tx.to]
+
+                if(receipt.contractAddress){
+
+                    touchedAccounts.push(receipt.contractAddress)
+
+                    atomicBatch.put('EVM_CONTRACT_DATA:'+receipt.contractAddress,{storageAbstractionLastPayment:WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id})
+                    
+                }
+
+                trackTransactionsList(originShard,tx.hash,'EVM_CALL','ECDSA',payedFee,touchedAccounts)
+
                 return {isOk:true,reason:'EVM'}
 
             }else return {isOk:false,reason:'EVM'}

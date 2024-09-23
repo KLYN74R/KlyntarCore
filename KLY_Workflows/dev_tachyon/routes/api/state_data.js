@@ -180,23 +180,33 @@ FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
 
             let account = await KLY_EVM.getAccount(accountID).catch(()=>null)
 
+            let contractData = await BLOCKCHAIN_DATABASES.STATE.get(`EVM_CONTRACT_DATA:${accountID}`).catch(()=>false)
+
             if(account){
 
                 let balanceInKlyUnits = Number(Web3.utils.fromWei(account.balance.toString(),'ether'))
 
                 let nonce = Number(account.nonce)
 
-                data = {
+                if(contractData){
 
-                    type:"eoa",
-                    balance:balanceInKlyUnits,
-                    uno:0,
-                    nonce,
-                    gas:0
+                    data = {
+                        
+                        type:"contract", lang:"Solidity",  balance:balanceInKlyUnits, uno:0, nonce, gas:0,
+                        
+                        storages:['DEFAULT'], bytecode:"",
+                        
+                        storageAbstractionLastPayment: contractData.storageAbstractionLastPayment
+                    
+                    }
 
+                } else {
+
+                    data = { type:"eoa", balance:balanceInKlyUnits, uno:0, gas:0}
+    
                 }
 
-            }else data = {}
+            } else data = {}
 
         } else data = await BLOCKCHAIN_DATABASES.STATE.get(shardID+':'+accountID).catch(()=>({err:'Not found'}))
 
