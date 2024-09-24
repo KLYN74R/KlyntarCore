@@ -23,7 +23,7 @@ let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
 
     // Now we can open required WebSocket connections with quorums majority
 
-    let {FINALIZATION_PROOFS,FINALIZATION_STATS,TEMP_CACHE} = currentEpochMetadata
+    let {FINALIZATION_PROOFS,TEMP_CACHE} = currentEpochMetadata
 
     let epochFullID = epochHandler.hash + "#" + epochHandler.id
 
@@ -115,12 +115,12 @@ let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
                                     
                             */
 
-                                let localMetadataForPotentialAlrp = TEMP_CACHE.get(`LRPS:${parsedData.forPoolPubkey}`) // format is {firstBlockHash,skipIndex,skipHash,proofs}
+                                let localMetadataForPotentialAlrp = TEMP_CACHE.get(`LRPS:${parsedData.forPoolPubkey}`) // format is {afpForFirstBlock,skipIndex,skipHash,skipAfp,proofs}
 
 
                                 if(localMetadataForPotentialAlrp){
 
-                                    let firstBlockHash = localMetadataForPotentialAlrp.firstBlockHash
+                                    let firstBlockHash = localMetadataForPotentialAlrp.afpForFirstBlock.blockHash
 
                                     let index = localMetadataForPotentialAlrp.skipIndex
 
@@ -139,45 +139,54 @@ let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
                                                                 
                                         }
                                 
-                                    }else if(parsedData.type === 'UPDATE' && typeof parsedData.skipData === 'object'){
+                                    }else if(parsedData.type === 'UPDATE' && typeof parsedData.skipData === 'object' && typeof parsedData.afpForFirstBlock === 'object'){
                                                                 
                                         let {index,hash,afp} = parsedData.skipData
                                 
+                                        
                                         let blockIdInAfp = (epochHandler.id+':'+parsedData.forPoolPubkey+':'+index)
                                 
+                                        let proposedHeightIsValid = typeof afp === 'object' && hash === afp.blockHash && blockIdInAfp === afp.blockID && await verifyAggregatedFinalizationProof(afp,epochHandler)
                                 
-                                        if(typeof afp === 'object' && hash === afp.blockHash && blockIdInAfp === afp.blockID && await verifyAggregatedFinalizationProof(afp,epochHandler)){
+
+                                        let firstBlockID = (epochHandler.id+':'+parsedData.forPoolPubkey+':0')
+
+                                        let proposedFirstBlockAfpIsValid = firstBlockID === parsedData.afpForFirstBlock.blockID && await verifyAggregatedFinalizationProof(parsedData.afpForFirstBlock,epochHandler)
 
 
-                                            let localFinalizationStatsForThisPool = FINALIZATION_STATS.get(parsedData.forPoolPubkey) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
-                                 
-                                            if(localFinalizationStatsForThisPool.index < index){
+                                        if(proposedHeightIsValid && proposedFirstBlockAfpIsValid && localMetadataForPotentialAlrp.skipIndex < index){
+
+                                            let {prevBlockHash,blockID,blockHash,proofs} = afp
                                                  
-                                                let {prevBlockHash,blockID,blockHash,proofs} = afp
-                                                 
-                                
-                                                localFinalizationStatsForThisPool.index = index
-                                
-                                                localFinalizationStatsForThisPool.hash = hash
-                                
-                                                localFinalizationStatsForThisPool.afp = {prevBlockHash,blockID,blockHash,proofs}
-                                 
-                            
-                                                // Store the updated version of finalization stats
-                        
-                                                FINALIZATION_STATS.set(parsedData.forPoolPubkey,localFinalizationStatsForThisPool)                    
-                            
-                                                // If our local version had lower index - clear grabbed signatures to repeat grabbing process again, with bigger block height
-                                
-                                                TEMP_CACHE.delete(`LRPS:${parsedData.forPoolPubkey}`)
-                                
+                                                
+                                            localMetadataForPotentialAlrp.afpForFirstBlock = {
+
+                                                prevBlockHash: parsedData.afpForFirstBlock.prevBlockHash,
+
+                                                blockID: parsedData.afpForFirstBlock.blockID,
+
+                                                blockHash: parsedData.afpForFirstBlock.blockHash,
+
+                                                proofs: parsedData.afpForFirstBlock.proofs
+
                                             }
+
+                                            localMetadataForPotentialAlrp.skipIndex = index
+                            
+                                            localMetadataForPotentialAlrp.skipHash = hash
+                            
+                                            localMetadataForPotentialAlrp.skipAfp = {prevBlockHash,blockID,blockHash,proofs}
+                        
+                                            // If our local version had lower index - clear grabbed signatures to repeat grabbing process again, with bigger block height
+                            
+                                            localMetadataForPotentialAlrp.proofs = {}
                                 
                                         }
                                      
                                     }
 
                                 }
+
                             }
 
                             if(parsedData.finalizationProof && proofsGrabber.huntingForHash === parsedData.votedForHash && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
