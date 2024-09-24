@@ -157,7 +157,7 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
             let proposedBlockID = epochHandler.id+':'+block.creator+':'+block.index
 
             let futureMetadataToStore
-
+            
 
             if(await verifyEd25519(proposedBlockHash,block.sig,block.creator).catch(()=>false)){
 
@@ -654,9 +654,9 @@ let returnBlocksRange = async(data,connection)=>{
 
 let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=>{
 
-    /*
+/*
 
-        [Info]:
+[Info]:
 
             Route to return LRP(leader rotation proof)
     
@@ -670,48 +670,33 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
 
         {
 
+            shard,
+
             poolPubKey,
 
-            shard
-
-            afpForFirstBlock:{
-
-                prevBlockHash
-                blockID,    => epochID:poolPubKey:0
-                blockHash,
-                proofs:{
-
-                    pubkey0:signa0,         => SIG(prevBlockHash+blockID+blockHash+AT.EPOCH.HASH+"#"+AT.EPOCH.id)
-                    ...
-                    pubkeyN:signaN
-
-                }
-
-            }
+            hisIndexInLeadersSequence,
 
             skipData:{
 
-            index,
-            hash,
+                index,
+                hash,
 
-            afp:{
+                afp:{
                 
-                prevBlockHash,
-                blockID,
-                blockHash,
+                    prevBlockHash,
+                    blockID,
+                    blockHash,
 
-                proofs:{
+                    proofs:{
                      
-                    pubKey0:signa0,         => prevBlockHash+blockID+hash+AT.EPOCH.HASH+"#"+AT.EPOCH.id
-                    ...
+                        pubKey0:signa0,         => prevBlockHash+blockID+hash+AT.EPOCH.HASH+"#"+AT.EPOCH.id
+                        ...
                         
+                    }
                 }
-
             }
 
         }
-
-    }
 
 
 [Response]:
@@ -789,7 +774,14 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
 
 
         // We can't sign the LRP(leader rotation proof) in case requested height is lower than our local version. So, send 'UPDATE' message to requester
+
         if(localFinalizationStats && localFinalizationStats.index > index){
+
+            // Try to return with AFP for the first block
+
+            let firstBlockID = `${epochHandler.id}:${requestForLeaderRotationProof.poolPubKey}:0`
+
+            let afpForFirstBlock = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>null)
 
             let responseData = {
 
@@ -800,6 +792,8 @@ let returnLeaderRotationProof = async(requestForLeaderRotationProof,connection)=
                 forPoolPubkey: requestForLeaderRotationProof.poolPubKey,
 
                 type:'UPDATE',
+
+                afpForFirstBlock,
 
                 skipData:localFinalizationStats // {index,hash,afp:{prevBlockHash,blockID,blockHash,proofs:{quorumMember0:signa,...,quorumMemberN:signaN}}}
 

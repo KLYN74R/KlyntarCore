@@ -84,7 +84,7 @@ export let WORKING_THREADS = {
             
         SHARD_POINTER:'',
 
-        VERIFICATION_STATS_PER_POOL:{}, // PUBKEY => {index:'',hash:''}
+        VERIFICATION_STATS_PER_POOL:{}, // PUBKEY => {index:int,hash:''}
 
 
         KLY_EVM_STATE_ROOT:'', // General KLY-EVM state root
