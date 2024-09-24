@@ -314,6 +314,9 @@ let generateBlocksPortion = async() => {
 
             let pubKeysOfAllThePreviousPools = leadersSequenceOfMyShard.slice(0,myIndexInLeadersSequenceForShard).reverse()
 
+            let indexOfPreviousLeaderInSequence = myIndexInLeadersSequenceForShard-1
+
+            let previousLeaderPubkey = leadersSequenceOfMyShard[indexOfPreviousLeaderInSequence]
 
 
             //_____________________ Fill the extraData.aggregatedLeadersRotationProofs _____________________
@@ -331,15 +334,25 @@ let generateBlocksPortion = async() => {
 
             // Add the ALRP for the previous pools in leaders sequence
 
-            let indexOfPreviousLeaderInSequence = myIndexInLeadersSequenceForShard-1
+            for(let leaderPubKey of pubKeysOfAllThePreviousPools){
 
-            for(let pubKeyOfPreviousLeader of pubKeysOfAllThePreviousPools){
+                let vtStatsPerPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[leaderPubKey] || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
-                let aggregatedLeaderRotationProof = getAggregatedLeaderRotationProof(epochHandler,pubKeyOfPreviousLeader,indexOfPreviousLeaderInSequence,myShardForThisEpoch).catch(()=>null)
+                let votingFinalizationPerPool = currentEpochMetadata.FINALIZATION_STATS.get(leaderPubKey) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
-                if(aggregatedLeaderRotationProof){
+                let proofThatAtLeastFirstBlockWasCreated = vtStatsPerPool.index !== 0 || votingFinalizationPerPool.index !== 0
 
-                    extraData.aggregatedLeadersRotationProofs[pubKeyOfPreviousLeader] = aggregatedLeaderRotationProof
+                // We 100% need ALRP for previous pool
+                // But no need in pools who created at least one block in epoch and it's not our previous pool
+
+                if(leaderPubKey !== previousLeaderPubkey && proofThatAtLeastFirstBlockWasCreated) break
+
+
+                let aggregatedLeaderRotationProof = getAggregatedLeaderRotationProof(epochHandler,leaderPubKey,indexOfPreviousLeaderInSequence,myShardForThisEpoch).catch(()=>null)
+
+                if(aggregatedLeaderRotationProof){                    
+
+                    extraData.aggregatedLeadersRotationProofs[leaderPubKey] = aggregatedLeaderRotationProof
 
                     if(aggregatedLeaderRotationProof.skipIndex >= 0) break // if we hit the ALRP with non-null index(at least index >= 0) it's a 100% that sequence is not broken, so no sense to push ALRPs for previous pools 
 
