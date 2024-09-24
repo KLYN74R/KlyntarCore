@@ -1,8 +1,8 @@
-import {getVerifiedAggregatedFinalizationProofByBlockId, verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
-
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, NODE_METADATA, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
+
+import {verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
 
 import {signEd25519} from '../../../KLY_Utils/utils.js'
 
@@ -133,98 +133,65 @@ let getAggregatedLeaderRotationProof = async (epochHandler,pubKeyOfOneOfPrevious
 
 
     // Prepare the template that we're going to send to quorum to get the ALRP
-    
-    let firstBlockIDByThisLeader = epochHandler.id+':'+pubKeyOfOneOfPreviousLeader+':0' // epochID:PubKeyOfCreator:0 - first block in epoch
-
-    let afpForFirstBlock = await getVerifiedAggregatedFinalizationProofByBlockId(firstBlockIDByThisLeader,epochHandler)
-
-    let firstBlockHash
 
     let localFinalizationStatsForThisPool = currentEpochMetadata.FINALIZATION_STATS.get(pubKeyOfOneOfPreviousLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
 
-    if(localFinalizationStatsForThisPool.index === -1){
+    // Create the cache to store LRPs for appropriate previous leader
 
-        localFinalizationStatsForThisPool.hash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+    if(!currentEpochMetadata.TEMP_CACHE.has(`LRPS:${pubKeyOfOneOfPreviousLeader}`)){
 
-        afpForFirstBlock = null
+        let templateToStore = {
 
-    }
+            firstBlockHash:"",
 
+            skipIndex:localFinalizationStatsForThisPool.index,
 
-    // Set the hash of first block for pool
-    // In case previous leader created zero blocks - set the <firstBlockHash> to "null-hash-value"('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')
-    // Otherwise, if at least one block was created & shared among quorum - take the hash value from AFP (.blockHash field(see AFP structure))
-    
-    if(!afpForFirstBlock && localFinalizationStatsForThisPool.index === -1) firstBlockHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+            skipHash:localFinalizationStatsForThisPool.hash,
 
-    else if(afpForFirstBlock) firstBlockHash = afpForFirstBlock.blockHash
+            proofs:{} // quorumMemberPubkey => SIG(`LEADER_ROTATION_PROOF:${pubKeyOfOneOfPreviousLeader}:${firstBlockHash}:${skipIndex}:${skipHash}:${epochFullID}`)
 
-    else return
-
-
-    // In case we haven't define hash of first block - stop searching process. Try next time
-
-    if(firstBlockHash){
-
-        // Create the cache to store LRPs for appropriate previous leader
-
-        if(!currentEpochMetadata.TEMP_CACHE.has(`LRPS:${pubKeyOfOneOfPreviousLeader}`)){
-
-            let templateToStore = {
-
-                firstBlockHash,
-
-                skipIndex:localFinalizationStatsForThisPool.index,
-
-                skipHash:localFinalizationStatsForThisPool.hash,
-
-                proofs:{} // quorumMemberPubkey => SIG(`LEADER_ROTATION_PROOF:${pubKeyOfOneOfPreviousLeader}:${firstBlockHash}:${skipIndex}:${skipHash}:${epochFullID}`)
-
-            }
-
-            currentEpochMetadata.TEMP_CACHE.set(`LRPS:${pubKeyOfOneOfPreviousLeader}`,templateToStore)
-    
         }
 
-        let lrpsCacheForLeader = currentEpochMetadata.TEMP_CACHE.get(`LRPS:${pubKeyOfOneOfPreviousLeader}`).proofs
+        currentEpochMetadata.TEMP_CACHE.set(`LRPS:${pubKeyOfOneOfPreviousLeader}`,templateToStore)
+    
+    }
 
-        let messageToSend = JSON.stringify({
+    let lrpsSignaturesByQuorumMembers = currentEpochMetadata.TEMP_CACHE.get(`LRPS:${pubKeyOfOneOfPreviousLeader}`).proofs
 
-            route:'get_leader_rotation_proof',
+    let messageToSend = JSON.stringify({
+
+        route:'get_leader_rotation_proof',
      
-            poolPubKey:pubKeyOfOneOfPreviousLeader,
+        shard:shardID,
 
-            hisIndexInLeadersSequence,
+        poolPubKey:pubKeyOfOneOfPreviousLeader,
 
-            shard:shardID,
-
-            afpForFirstBlock,
-
-            skipData:localFinalizationStatsForThisPool
+        hisIndexInLeadersSequence,
+        
+        skipData:localFinalizationStatsForThisPool
     
-        })
+    })
 
 
-        for(let pubKeyOfQuorumMember of epochHandler.quorum){
+    for(let pubKeyOfQuorumMember of epochHandler.quorum){
     
-            // No sense to get finalization proof again if we already have
+        // No sense to get finalization proof again if we already have
 
-            if(lrpsCacheForLeader[pubKeyOfQuorumMember]) continue
+        if(lrpsSignaturesByQuorumMembers[pubKeyOfQuorumMember]) continue
 
-            let connection = currentEpochMetadata.TEMP_CACHE.get('WS:'+pubKeyOfQuorumMember)
+        let connection = currentEpochMetadata.TEMP_CACHE.get('WS:'+pubKeyOfQuorumMember)
 
-            if(connection) connection.sendUTF(messageToSend)
-
-        }
-
-        await new Promise(resolve=>
-
-            setTimeout(()=>resolve(),1000)
-    
-        )
+        if(connection) connection.sendUTF(messageToSend)
 
     }
+
+
+    await new Promise(resolve=>
+
+        setTimeout(()=>resolve(),1000)
+    
+    )
 
 }
 
@@ -368,7 +335,7 @@ let generateBlocksPortion = async() => {
 
             for(let pubKeyOfPreviousLeader of pubKeysOfAllThePreviousPools){
 
-                let aggregatedLeaderRotationProof = await getAggregatedLeaderRotationProof(epochHandler,pubKeyOfPreviousLeader,indexOfPreviousLeaderInSequence,myShardForThisEpoch).catch(()=>null)
+                let aggregatedLeaderRotationProof = getAggregatedLeaderRotationProof(epochHandler,pubKeyOfPreviousLeader,indexOfPreviousLeaderInSequence,myShardForThisEpoch).catch(()=>null)
 
                 if(aggregatedLeaderRotationProof){
 
