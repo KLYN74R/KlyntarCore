@@ -402,7 +402,7 @@ export let VERIFIERS = {
 
                     trackTransactionsList(originShard,blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,[tx.creator,contractID])
 
-                    return {isOk:true}
+                    return {isOk:true, createdContractAddress: contractID}
 
                 } else return {isOk:false,reason:`Not enough native currency or gas to execute transaction`}
 

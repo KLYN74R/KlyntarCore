@@ -84,7 +84,9 @@ FASTIFY_SERVER.get('/tx_receipt/:txID',(request,response)=>{
 
                         order:0,
 
-                        isOk: txReceipt.receipt.status === 1
+                        isOk: txReceipt.receipt.status === 1,
+
+                        createdContractAddress: txReceipt.receipt.contractAddress
 
                     }
 
