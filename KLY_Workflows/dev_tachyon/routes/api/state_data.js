@@ -204,7 +204,7 @@ FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
 
                 } else {
 
-                    data = { type:"eoa", balance:balanceInKlyUnits, uno:0, gas:0}
+                    data = { type:"eoa", balance:balanceInKlyUnits, nonce, uno:0, gas:0}
     
                 }
 
