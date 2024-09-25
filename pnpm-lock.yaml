@@ -19,7 +19,7 @@ importers:
         version: 1.0.1
       '@klyntar/klyntarevmjsonrpc':
         specifier: github:KLYN74R/KlyntarEVMJsonRPC
-        version: https://codeload.github.com/KLYN74R/KlyntarEVMJsonRPC/tar.gz/68793132b63b69d3efaceb24afd7bfa88f4b5ac8
+        version: https://codeload.github.com/KLYN74R/KlyntarEVMJsonRPC/tar.gz/f1fefbc0c2910abea83c6059b5da05e272d04d2f(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       assemblyscript:
         specifier: ^0.19.23
         version: 0.19.23
@@ -83,7 +83,7 @@ importers:
         version: 4.0.0
       '@solana/web3.js':
         specifier: ^1.87.6
-        version: 1.87.6
+        version: 1.87.6(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       eslint:
         specifier: ^8.56.0
         version: 8.56.0
@@ -98,7 +98,7 @@ importers:
         version: 1.0.0
       web3:
         specifier: ^1.8.0
-        version: 1.8.0
+        version: 1.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
 
 packages:
 
@@ -249,9 +249,8 @@ packages:
   '@idena/vrf-js@1.0.1':
     resolution: {integrity: sha512-XYC/6j3PKZ9O9eqNqjVQrpdD0oRN+eScnicK7o6Q9scRfWQOsZNIewRUJ1rNEOUr0uqlOrs8Nm/kBhmrjp+2tg==}
 
-  '@klyntar/klyntarevmjsonrpc@https://codeload.github.com/KLYN74R/KlyntarEVMJsonRPC/tar.gz/68793132b63b69d3efaceb24afd7bfa88f4b5ac8':
-    resolution: {tarball: https://codeload.github.com/KLYN74R/KlyntarEVMJsonRPC/tar.gz/68793132b63b69d3efaceb24afd7bfa88f4b5ac8}
-    name: '@klyntar/klyntarevmjsonrpc'
+  '@klyntar/klyntarevmjsonrpc@https://codeload.github.com/KLYN74R/KlyntarEVMJsonRPC/tar.gz/f1fefbc0c2910abea83c6059b5da05e272d04d2f':
+    resolution: {tarball: https://codeload.github.com/KLYN74R/KlyntarEVMJsonRPC/tar.gz/f1fefbc0c2910abea83c6059b5da05e272d04d2f}
     version: 3.4.0
     hasBin: true
 
@@ -3170,11 +3169,11 @@ snapshots:
       js-sha512: 0.8.0
       mocha: 8.4.0
 
-  '@klyntar/klyntarevmjsonrpc@https://codeload.github.com/KLYN74R/KlyntarEVMJsonRPC/tar.gz/68793132b63b69d3efaceb24afd7bfa88f4b5ac8':
+  '@klyntar/klyntarevmjsonrpc@https://codeload.github.com/KLYN74R/KlyntarEVMJsonRPC/tar.gz/f1fefbc0c2910abea83c6059b5da05e272d04d2f(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
     dependencies:
       '@ethereumjs/tx': 4.2.0
       keccak256: 1.0.6
-      web3: 1.10.4
+      web3: 1.10.4(bufferutil@4.0.8)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - bufferutil
       - encoding
@@ -3239,7 +3238,7 @@ snapshots:
     dependencies:
       buffer: 6.0.3
 
-  '@solana/web3.js@1.87.6':
+  '@solana/web3.js@1.87.6(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
     dependencies:
       '@babel/runtime': 7.23.6
       '@noble/curves': 1.3.0
@@ -3252,7 +3251,7 @@ snapshots:
       bs58: 4.0.1
       buffer: 6.0.3
       fast-stable-stringify: 1.0.0
-      jayson: 4.1.0
+      jayson: 4.1.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       node-fetch: 2.7.0
       rpc-websockets: 7.9.0
       superstruct: 0.14.2
@@ -3360,7 +3359,7 @@ snapshots:
       humanize-ms: 1.2.1
 
   ajv-formats@2.1.1(ajv@8.12.0):
-    dependencies:
+    optionalDependencies:
       ajv: 8.12.0
 
   ajv@6.12.6:
@@ -3887,6 +3886,7 @@ snapshots:
   debug@4.3.1(supports-color@8.1.1):
     dependencies:
       ms: 2.1.2
+    optionalDependencies:
       supports-color: 8.1.1
 
   debug@4.3.4:
@@ -4124,13 +4124,13 @@ snapshots:
       idna-uts46-hx: 2.3.1
       js-sha3: 0.5.7
 
-  eth-lib@0.1.29:
+  eth-lib@0.1.29(bufferutil@4.0.8)(utf-8-validate@5.0.10):
     dependencies:
       bn.js: 4.12.0
       elliptic: 6.5.4
       nano-json-stream-parser: 0.1.2
       servify: 0.1.12
-      ws: 3.3.3
+      ws: 3.3.3(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       xhr-request-promise: 0.1.3
     transitivePeerDependencies:
       - bufferutil
@@ -4701,9 +4701,9 @@ snapshots:
 
   isexe@2.0.0: {}
 
-  isomorphic-ws@4.0.1(ws@7.5.9):
+  isomorphic-ws@4.0.1(ws@7.5.9(bufferutil@4.0.8)(utf-8-validate@5.0.10)):
     dependencies:
-      ws: 7.5.9
+      ws: 7.5.9(bufferutil@4.0.8)(utf-8-validate@5.0.10)
 
   isstream@0.1.2: {}
 
@@ -4714,7 +4714,7 @@ snapshots:
       filelist: 1.0.4
       minimatch: 3.1.2
 
-  jayson@4.1.0:
+  jayson@4.1.0(bufferutil@4.0.8)(utf-8-validate@5.0.10):
     dependencies:
       '@types/connect': 3.4.38
       '@types/node': 12.20.55
@@ -4724,10 +4724,10 @@ snapshots:
       delay: 5.0.0
       es6-promisify: 5.0.0
       eyes: 0.1.8
-      isomorphic-ws: 4.0.1(ws@7.5.9)
+      isomorphic-ws: 4.0.1(ws@7.5.9(bufferutil@4.0.8)(utf-8-validate@5.0.10))
       json-stringify-safe: 5.0.1
       uuid: 8.3.2
-      ws: 7.5.9
+      ws: 7.5.9(bufferutil@4.0.8)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -5717,11 +5717,11 @@ snapshots:
 
   supports-preserve-symlinks-flag@1.0.0: {}
 
-  swarm-js@0.1.42:
+  swarm-js@0.1.42(bufferutil@4.0.8)(utf-8-validate@5.0.10):
     dependencies:
       bluebird: 3.7.2
       buffer: 5.7.1
-      eth-lib: 0.1.29
+      eth-lib: 0.1.29(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       fs-extra: 4.0.3
       got: 11.8.6
       mime-types: 2.1.35
@@ -5895,21 +5895,21 @@ snapshots:
 
   web-worker@1.2.0: {}
 
-  web3-bzz@1.10.4:
+  web3-bzz@1.10.4(bufferutil@4.0.8)(utf-8-validate@5.0.10):
     dependencies:
       '@types/node': 12.20.55
       got: 12.1.0
-      swarm-js: 0.1.42
+      swarm-js: 0.1.42(bufferutil@4.0.8)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - bufferutil
       - supports-color
       - utf-8-validate
 
-  web3-bzz@1.8.0:
+  web3-bzz@1.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10):
     dependencies:
       '@types/node': 12.20.55
       got: 12.1.0
-      swarm-js: 0.1.42
+      swarm-js: 0.1.42(bufferutil@4.0.8)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -6279,9 +6279,9 @@ snapshots:
       randombytes: 2.1.0
       utf8: 3.0.0
 
-  web3@1.10.4:
+  web3@1.10.4(bufferutil@4.0.8)(utf-8-validate@5.0.10):
     dependencies:
-      web3-bzz: 1.10.4
+      web3-bzz: 1.10.4(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       web3-core: 1.10.4
       web3-eth: 1.10.4
       web3-eth-personal: 1.10.4
@@ -6294,9 +6294,9 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  web3@1.8.0:
+  web3@1.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10):
     dependencies:
-      web3-bzz: 1.8.0
+      web3-bzz: 1.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       web3-core: 1.8.0
       web3-eth: 1.8.0
       web3-eth-personal: 1.8.0
@@ -6355,16 +6355,22 @@ snapshots:
 
   wrappy@1.0.2: {}
 
-  ws@3.3.3:
+  ws@3.3.3(bufferutil@4.0.8)(utf-8-validate@5.0.10):
     dependencies:
       async-limiter: 1.0.1
       safe-buffer: 5.1.2
       ultron: 1.1.1
+    optionalDependencies:
+      bufferutil: 4.0.8
+      utf-8-validate: 5.0.10
 
-  ws@7.5.9: {}
+  ws@7.5.9(bufferutil@4.0.8)(utf-8-validate@5.0.10):
+    optionalDependencies:
+      bufferutil: 4.0.8
+      utf-8-validate: 5.0.10
 
   ws@8.15.1(bufferutil@4.0.8)(utf-8-validate@5.0.10):
-    dependencies:
+    optionalDependencies:
       bufferutil: 4.0.8
       utf-8-validate: 5.0.10
 
