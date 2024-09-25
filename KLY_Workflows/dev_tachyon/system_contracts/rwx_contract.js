@@ -73,7 +73,7 @@ export let CONTRACT = {
         let futureRwxContractMetadataTemplate = {
 
             type:'contract',
-            lang:'N/A',
+            lang:'RWX',
             balance:0,
             uno:0,
             gas:0,
