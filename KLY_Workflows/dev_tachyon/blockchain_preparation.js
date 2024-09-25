@@ -354,9 +354,10 @@ let setGenesisToState=async()=>{
                     let caseIgnoreAccountAddressWithoutPrefix = Buffer.from(evmKey.slice(2),'hex').toString('hex')
 
                     // Add assignment to shard
+
                     verificationThreadAtomicBatch.put('SHARD_BIND:'+caseIgnoreAccountAddressWithoutPrefix,{shard:bindToShard})
 
-                    verificationThreadAtomicBatch.put('EVM_CONTRACT_DATA:'+evmKey,{storageAbstractionLastPayment:0})
+                    if(isContract) verificationThreadAtomicBatch.put('EVM_CONTRACT_DATA:'+evmKey,{storageAbstractionLastPayment:0})
     
                 }
 

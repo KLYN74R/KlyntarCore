@@ -18,8 +18,8 @@ importers:
         specifier: ^1.0.1
         version: 1.0.1
       '@klyntar/klyntarevmjsonrpc':
-        specifier: github:KLYN74R/KlyntarEVMJsonRPC
-        version: https://codeload.github.com/KLYN74R/KlyntarEVMJsonRPC/tar.gz/f1fefbc0c2910abea83c6059b5da05e272d04d2f(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+        specifier: ^3.5.0
+        version: 3.5.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       assemblyscript:
         specifier: ^0.19.23
         version: 0.19.23
@@ -249,9 +249,8 @@ packages:
   '@idena/vrf-js@1.0.1':
     resolution: {integrity: sha512-XYC/6j3PKZ9O9eqNqjVQrpdD0oRN+eScnicK7o6Q9scRfWQOsZNIewRUJ1rNEOUr0uqlOrs8Nm/kBhmrjp+2tg==}
 
-  '@klyntar/klyntarevmjsonrpc@https://codeload.github.com/KLYN74R/KlyntarEVMJsonRPC/tar.gz/f1fefbc0c2910abea83c6059b5da05e272d04d2f':
-    resolution: {tarball: https://codeload.github.com/KLYN74R/KlyntarEVMJsonRPC/tar.gz/f1fefbc0c2910abea83c6059b5da05e272d04d2f}
-    version: 3.4.0
+  '@klyntar/klyntarevmjsonrpc@3.5.0':
+    resolution: {integrity: sha512-iec06mBXq3P4b/5gl6RKSBtVN1OdxyAtKiVEp2B78bxpc0T0eztYQXZSdnOpyF5ghqfbVL6pZEmlcIGo0Jl64Q==}
     hasBin: true
 
   '@noble/curves@1.1.0':
@@ -3169,7 +3168,7 @@ snapshots:
       js-sha512: 0.8.0
       mocha: 8.4.0
 
-  '@klyntar/klyntarevmjsonrpc@https://codeload.github.com/KLYN74R/KlyntarEVMJsonRPC/tar.gz/f1fefbc0c2910abea83c6059b5da05e272d04d2f(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
+  '@klyntar/klyntarevmjsonrpc@3.5.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
     dependencies:
       '@ethereumjs/tx': 4.2.0
       keccak256: 1.0.6
