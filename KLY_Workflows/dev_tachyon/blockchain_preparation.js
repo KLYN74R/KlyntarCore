@@ -295,12 +295,12 @@ let setGenesisToState=async()=>{
         let contractMetadataTemplate = {
 
             type:'contract',
-            lang:'N/A',
+            lang:'system/staking/sub',
             balance:0,
             uno:0,
             gas:0,
             storages:['POOL'],
-            bytecode:''
+            storageAbstractionLastPayment:-1
 
         }
         
@@ -410,14 +410,15 @@ let setGenesisToState=async()=>{
                     uno,
                     gas,
                     storages,
-                    storageAbstractionLastPayment,
-                    bytecode
+                    storageAbstractionLastPayment
                 
                 } 
 
                 // Write metadata first
                 
                 verificationThreadAtomicBatch.put(shardID+':'+accountID,contractMeta)
+
+                verificationThreadAtomicBatch.put(shardID+':'+accountID+'_BYTECODE',bytecode)
 
                 // Finally - write genesis storage of contract
 

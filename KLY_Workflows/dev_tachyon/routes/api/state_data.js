@@ -198,7 +198,7 @@ FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
                         
                         type:"contract", lang:"Solidity",  balance:balanceInKlyUnits, uno:0, gas:0,
                         
-                        storages:['DEFAULT'], bytecode:"",
+                        storages:['DEFAULT'],
                         
                         storageAbstractionLastPayment: contractData.storageAbstractionLastPayment
                     
