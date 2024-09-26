@@ -1,3 +1,5 @@
+import {EPOCH_EDGE_SYSTEM_CONTRACTS, SYSTEM_CONTRACTS} from '../../system_contracts/root.js'
+
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../blockchain_preparation.js'
 
 import {getFromState} from '../../common_functions/state_interactions.js'
@@ -177,9 +179,23 @@ FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
 
         let accountID = request.params.accountID
 
-        let data = await BLOCKCHAIN_DATABASES.STATE.get(shardID+':'+accountID).catch(()=>({err:'Not found'}))
+        let data
 
-        if(accountID.startsWith('0x') && accountID.length === 42){
+        // First - check if request for system smart contract
+
+        if(shardID === 'x' && (SYSTEM_CONTRACTS.has(accountID) || EPOCH_EDGE_SYSTEM_CONTRACTS.has(accountID))){
+
+            data = {
+                        
+                type:"contract", lang:`system/${accountID}`,  balance:0, uno:0, gas:0,
+                
+                storages:[],
+                
+                storageAbstractionLastPayment: -1
+            
+            }
+
+        } else if(accountID.startsWith('0x') && accountID.length === 42){
 
             let account = await KLY_EVM.getAccount(accountID).catch(()=>null)
 
@@ -213,7 +229,7 @@ FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
             } else data = {}
 
         } else data = await BLOCKCHAIN_DATABASES.STATE.get(shardID+':'+accountID).catch(()=>({err:'Not found'}))
-
+ 
 
         response
 
