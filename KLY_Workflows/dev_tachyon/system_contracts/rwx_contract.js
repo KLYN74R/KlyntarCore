@@ -73,12 +73,12 @@ export let CONTRACT = {
         let futureRwxContractMetadataTemplate = {
 
             type:'contract',
-            lang:'RWX',
+            lang:'system/rwx/sub',
             balance:0,
             uno:0,
             gas:0,
             storages:['DEFAULT'],
-            bytecode:''
+            storageAbstractionLastPayment:-1
 
         }
 

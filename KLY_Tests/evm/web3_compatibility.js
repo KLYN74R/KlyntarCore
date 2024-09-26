@@ -198,7 +198,7 @@ let EVM_CONTRACT_DEPLOY=async()=>{
 }
 
 
-// EVM_CONTRACT_DEPLOY()
+EVM_CONTRACT_DEPLOY()
 
 
 let EVM_CONTRACT_CALL=async()=>{

@@ -382,12 +382,13 @@ export let VERIFIERS = {
                         uno:0,
                         gas:0,
                         storages:['DEFAULT'],
-                        bytecode:tx.payload.bytecode,
                         storageAbstractionLastPayment:WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
         
                     }
                 
                     atomicBatch.put(originShard+':'+contractID,contractMetadataTemplate)
+
+                    atomicBatch.put(originShard+':'+contractID+'_BYTECODE',tx.payload.bytecode)
     
                     atomicBatch.put(originShard+':'+contractID+'_STORAGE_DEFAULT',tx.payload.constructorParams.initStorage) // autocreate the default storage for contract
 
@@ -469,6 +470,8 @@ export let VERIFIERS = {
                         // Otherwise it's attempt to call custom contract
         
                         let contractMetadata = await getFromState(originShard+':'+tx.payload.contractID)
+
+                        let contractBytecode = await getFromState(originShard+':'+tx.payload.contractID+'_BYTECODE')
         
                         if(contractMetadata){
         
@@ -476,7 +479,7 @@ export let VERIFIERS = {
         
                             let gasLimit = tx.payload.gasLimit
         
-                            let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(Buffer.from(contractMetadata.bytecode,'hex'), gasLimit, getMethodsToInject(tx.payload.imports))
+                            let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(Buffer.from(contractBytecode,'hex'), gasLimit, getMethodsToInject(tx.payload.imports))
         
                             let methodToCall = tx.payload.method
         

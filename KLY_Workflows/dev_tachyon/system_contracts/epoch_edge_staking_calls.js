@@ -70,12 +70,12 @@ export let CONTRACT = {
             let contractMetadataTemplate = {
 
                 type:'contract',
-                lang:'N/A',
+                lang:'system/staking/sub',
                 balance:0,
                 uno:0,
                 gas:0,
                 storages:['POOL'],
-                bytecode:''
+                storageAbstractionLastPayment:-1
 
             }
 
