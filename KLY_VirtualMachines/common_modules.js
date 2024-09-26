@@ -186,39 +186,24 @@ export let verifyVrfRandomValue = (randomHashAsHexString,dataAsHexString,pubkeyA
 
 
 
-
-// Function to bind to appropriate contract storage and call get/set operations in a seamless way within contract call
-export let stateInteraction = function(getOrSetOperation,idOfRecord,jsonStringToStore) {
-
-    if(getOrSetOperation === 'get') return this[idOfRecord] || ''
-
-    else if(getOrSetOperation === 'set'){
-
-        this[idOfRecord] = JSON.parse(jsonStringToStore)
-
-    }
+export let getFromState = key => {
+        
+    let keyValue = this.contract.exports.__getString(key);
+    
+    return this.contract.exports.__newString(JSON.stringify(this.contractState[keyValue] || ''));
 
 }
 
 
+export let setToState=(key,value)=>{
 
-// export let getFromState = key => {
+    let keyValue = this.contract.exports.__getString(key);
+
+    let valueValue = this.contract.exports.__getString(value);
         
-//     let keyValue = meteredContract.exports.__getString(key);
-    
-//     return meteredContract.exports.__newString(JSON.stringify(contractState.get(keyValue)));
+    this.contractState.set(keyValue,valueValue);
 
-// }
-
-//   setToState:(key,value)=>{
-
-//     let keyValue = meteredContract.exports.__getString(key);
-
-//     let valueValue = meteredContract.exports.__getString(value);
-        
-//     contractState.set(keyValue,valueValue);
-
-//   },
+}
 
 
 

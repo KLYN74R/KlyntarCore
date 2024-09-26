@@ -216,6 +216,11 @@ export let getFirstBlockOnEpochOnSpecificShard = async(epochHandler,shardID,getB
 
     if(!pivotShardData){
 
+        // Ask known peers about first block assumption
+
+        
+
+
         let arrayOfPoolsForShard = epochHandler.leadersSequence[shardID]
         
         for(let position = 0, length = arrayOfPoolsForShard.length ; position < length ; position++){
