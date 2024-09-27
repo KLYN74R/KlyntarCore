@@ -20,7 +20,7 @@ import ContractInstance from './rustBase.js'
 
 
 
-export let VM = {
+export let WVM = {
 
     //Function to create a contract instance from WASM bytecode with injected metering function 
     bytesToMeteredContract:async(contractBytecodeAsBuffer,gasLimit,extraModules)=>{

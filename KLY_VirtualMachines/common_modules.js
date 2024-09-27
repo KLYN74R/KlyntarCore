@@ -210,9 +210,9 @@ export let getFromState = key => {
 
     this.contractGasHandler.gasBurned += 1000;
         
-    let keyValue = this.contract.exports.__getString(key);
+    let keyValue = this.contractInstance.__getString(key);
     
-    return this.contract.exports.__newString(JSON.stringify(this.contractStorage[keyValue] || ''));
+    return this.contractInstance.__newString(JSON.stringify(this.contractStorage[keyValue] || ''));
 
 }
 
@@ -222,10 +222,10 @@ export let setToState = (key,value) => {
 
     this.contractGasHandler.gasBurned += 5000;
 
-    let keyValue = this.contract.exports.__getString(key);
+    let keyValue = this.contractInstance.__getString(key);
 
-    let valueValue = this.contract.exports.__getString(value);
-
+    let valueValue = this.contractInstance.__getString(value);
+        
     this.contractStorage[keyValue] = valueValue;
 
 }
