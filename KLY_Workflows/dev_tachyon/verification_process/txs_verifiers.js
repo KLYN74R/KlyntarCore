@@ -514,7 +514,7 @@ export let VERIFIERS = {
 
                             }
 
-                            let {contractInstance,contractGasHandler} = await WVM.bytesToMeteredContract(Buffer.from(contractBytecode,'hex'), gasLimit, getFunctionsToInject(tx.payload.imports,contractHandler))
+                            let {contractInstance,contractGasHandler} = await WVM.bytesToMeteredContract(Buffer.from(contractBytecode,'hex'), gasLimit, contractMetadata.lang, getFunctionsToInject(tx.payload.imports,contractHandler))
         
                             contractHandler.contractInstance = contractInstance
 

@@ -8,28 +8,86 @@
 ╚═╝  ╚═╝╚══════╝╚═╝   ╚═╝  ╚═══╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝     ╚══╝╚══╝   ╚═══╝  ╚═╝     ╚═╝
                                                                                  
 
-Here will be the implementation of VM for KLYNTAR to allow workflows to import it and use in code
+Here will be the implementation of WASM-VM for KLYNTAR to allow workflows to import it and use in code
 
 */
 
 
 
 
+import {CONFIGURATION} from '../../klyn74r.js'
+
 import ContractInstance from './rustBase.js'
 
+import loader from '@assemblyscript/loader'
+
+import metering from 'wasm-metering'
+
+
+
+let {TYPE,FUNCTION_NAME,MODULE_NAME} = CONFIGURATION.KLY_WVM.METERING
 
 
 
 export let WVM = {
 
-    //Function to create a contract instance from WASM bytecode with injected metering function 
-    bytesToMeteredContract:async(contractBytecodeAsBuffer,gasLimit,extraModules)=>{
+    //Function to create a contract instance from WASM bytecode with injected metering function
 
-        let contract = new ContractInstance(extraModules,contractBytecodeAsBuffer)
+    bytesToMeteredContract:async(contractBytecodeAsBuffer,gasLimit,contractLang,extraModules)=>{
 
-        let contractInstanceWithGasHandler = await contract.setUpContract(gasLimit) // return instance and pointer to metadata to track gas changes => {contractInstance,contractGasHandler}
+        if(contractLang === 'AssemblyScript'){
 
-        return contractInstanceWithGasHandler
+            // Modify contract bytes to inject metering functionality
+
+            let prePreparedContractBytecode = metering.meterWASM(contractBytecodeAsBuffer,{
+    
+                meterType:TYPE,
+            
+                fieldStr:FUNCTION_NAME,
+        
+                moduleStr:MODULE_NAME,
+        
+                //And cost table to meter gas usage by opcodes price
+                costTable:CONFIGURATION.KLY_WVM.GAS_TABLE,
+        
+            })
+
+
+            let contractGasHandler = {gasLimit, gasBurned:0}
+
+
+            //Inject metering function
+            let contractInstance = await loader.instantiate(prePreparedContractBytecode,{
+
+                metering: {
+                
+                    burnGas: gasAmount => {
+                    
+                        contractGasHandler.gasBurned += gasAmount
+            
+                        if (contractGasHandler.gasBurned > contractGasHandler.gasLimit) throw new Error(`No more gas => Limit:${contractGasHandler.gasLimit}        |       Burned:${contractGasHandler.gasBurned}`)
+          
+                    }
+            
+                },
+
+                // ... and inject extra modules
+
+                ...extraModules
+        
+            }).then(contract=>contract.exports)
+
+            return {contractInstance,contractGasHandler}
+
+        } else {
+
+            let contract = new ContractInstance(extraModules,contractBytecodeAsBuffer)
+
+            let contractInstanceWithGasHandler = await contract.setUpContract(gasLimit) // return instance and pointer to metadata to track gas changes => {contractInstance,contractGasHandler}
+    
+            return contractInstanceWithGasHandler    
+
+        }
         
     },
 
@@ -54,9 +112,9 @@ export let WVM = {
 
         }else if(contractLang==='AssemblyScript'){
 
-            let pointerToChunk = contractInstance.__newString(params);
+            let pointerToParamsObject = contractInstance.__newString(params);
 
-            result = contractInstance.__getString(contractInstance[functionName](pointerToChunk))
+            result = contractInstance.__getString(contractInstance[functionName](pointerToParamsObject))
 
         }
 
