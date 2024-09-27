@@ -217,7 +217,8 @@ export let getFromState = key => {
 }
 
 
-export let setToState=(key,value)=>{
+
+export let setToState = (key,value) => {
 
     this.contractGasHandler.gasBurned += 5000;
 
@@ -228,7 +229,6 @@ export let setToState=(key,value)=>{
     this.contractStorage[keyValue] = valueValue;
 
 }
-
 
 
 
