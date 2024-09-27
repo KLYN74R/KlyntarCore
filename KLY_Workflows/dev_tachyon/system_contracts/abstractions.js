@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
-import {verifyQuorumMajoritySolution} from "../../../KLY_VirtualMachines/common_modules.js"
+
+import {verifyQuorumMajoritySolution} from "../common_functions/work_with_proofs.js"
 
 import {getFromState} from "../common_functions/state_interactions.js"
 

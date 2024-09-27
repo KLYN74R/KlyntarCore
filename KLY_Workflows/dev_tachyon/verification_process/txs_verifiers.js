@@ -3,9 +3,9 @@ import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../blockchai
 
 import {getUserAccountFromState, getFromState} from '../common_functions/state_interactions.js'
 
-import {verifyQuorumMajoritySolution} from '../../../KLY_VirtualMachines/common_modules.js'
-
 import * as functionsToInjectToVm from '../../../KLY_VirtualMachines/common_modules.js'
+
+import {verifyQuorumMajoritySolution} from '../common_functions/work_with_proofs.js'
 
 import {blake3Hash, verifyEd25519} from '../../../KLY_Utils/utils.js'
 
@@ -24,6 +24,8 @@ import {BLOCKCHAIN_GENESIS} from '../../../klyn74r.js'
 import {TXS_FILTERS} from './txs_filters.js'
 
 import web3 from 'web3'
+
+
 
 
 
