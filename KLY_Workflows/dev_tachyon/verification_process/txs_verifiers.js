@@ -5,6 +5,8 @@ import {getUserAccountFromState, getFromState} from '../common_functions/state_i
 
 import {verifyQuorumMajoritySolution} from '../../../KLY_VirtualMachines/common_modules.js'
 
+import * as functionsToInjectToVm from '../../../KLY_VirtualMachines/common_modules.js'
+
 import {blake3Hash, verifyEd25519} from '../../../KLY_Utils/utils.js'
 
 import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
@@ -13,7 +15,7 @@ import tbls from '../../../KLY_Utils/signatures/threshold/tbls.js'
 
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
-import {VM} from '../../../KLY_VirtualMachines/kly_wvm/vm.js'
+import {WVM} from '../../../KLY_VirtualMachines/kly_wvm/vm.js'
 
 import {SYSTEM_CONTRACTS} from '../system_contracts/root.js'
 
@@ -22,7 +24,6 @@ import {BLOCKCHAIN_GENESIS} from '../../../klyn74r.js'
 import {TXS_FILTERS} from './txs_filters.js'
 
 import web3 from 'web3'
-
 
 
 
@@ -44,11 +45,23 @@ let getCostPerSignatureType = transaction => {
 }
 
 
-// Load required modules and inject to contract
-// eslint-disable-next-line no-unused-vars
-let getMethodsToInject = _imports => {
+// Load required functions and inject to smart contract
 
-    return {}
+let getFunctionsToInject = (arrayOfImports,contractHandlerToBind) => {
+
+    let templateToReturn = {
+
+        klyntar:{} // function injected into contract should be injected from <klyntar> module
+
+    }
+
+    for(let funcName of arrayOfImports){
+
+        templateToReturn.klyntar[funcName] = functionsToInjectToVm[funcName].bind(contractHandlerToBind) // need binding to increase gas counter from injected functions and for other purposes
+
+    }
+
+    return templateToReturn
 
 }
 
@@ -475,12 +488,10 @@ export let VERIFIERS = {
         
                         if(contractMetadata){
         
-                            // Prepare the contract instance
+                            // Prepare the contract handler
         
                             let gasLimit = tx.payload.gasLimit
         
-                            let {contractInstance,contractGasHandler} = await VM.bytesToMeteredContract(Buffer.from(contractBytecode,'hex'), gasLimit, getMethodsToInject(tx.payload.imports))
-
                             let methodToCall = tx.payload.method
         
                             let paramsToPass = tx.payload.params
@@ -488,10 +499,30 @@ export let VERIFIERS = {
                             // Before call - get the contract default storage from state DB
         
                             let contractStorage = await getFromState(originShard+':'+tx.payload.contractID+'_STORAGE_DEFAULT')
+
+                            
+                            
+                            // Start building the handler with all required data
+
+                            let contractHandler = { 
+                                
+                                contractStorage,
+
+                                contractAccount:  contractMetadata,
+
+                                recipientAccount: await getFromState(originShard+':'+tx.payload.to) // in case you plan to call <transferNativeCoins> function - you need to get account of recipient first
+
+                            }
+
+                            let {contractInstance,contractGasHandler} = await WVM.bytesToMeteredContract(Buffer.from(contractBytecode,'hex'), gasLimit, getFunctionsToInject(tx.payload.imports,contractHandler))
         
+                            contractHandler.contractInstance = contractInstance
+
+                            contractHandler.contractGasHandler = contractGasHandler
+
                             // Call contract
         
-                            let resultAsJson = VM.callContract(contractInstance,contractGasHandler,paramsToPass,methodToCall,contractGasHandler.lang)
+                            let resultAsJson = WVM.callContract(contractInstance,contractGasHandler,paramsToPass,methodToCall, contractMetadata.lang)
                            
                             execResultWithStatusAndReason = {isOk:true,extraData:JSON.parse(resultAsJson)} // TODO: Limit the size of <extraData> field
         
