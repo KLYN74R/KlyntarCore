@@ -1,9 +1,8 @@
-import {verifyQuorumMajoritySolution} from "../../../KLY_VirtualMachines/common_modules.js"
+import {verifyQuorumMajoritySolution} from "../common_functions/work_with_proofs.js"
 
 import {getUserAccountFromState} from "../common_functions/state_interactions.js"
 
 import {GLOBAL_CACHES} from "../blockchain_preparation.js"
-
 
 
 

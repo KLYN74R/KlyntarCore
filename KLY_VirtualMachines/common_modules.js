@@ -39,7 +39,7 @@ let snarkjs = createRequire(import.meta.url)('snarkjs');
 
 
 
-export let verifyQuorumMajoritySolution = (dataThatShouldBeSigned,agreementsMapping) => {
+export let verifyQuorumMajoritySolutionFromVM = function(dataThatShouldBeSigned,agreementsMapping) {
 
     this.contractGasHandler.gasBurned += 60000;
 
@@ -70,7 +70,7 @@ export let verifyQuorumMajoritySolution = (dataThatShouldBeSigned,agreementsMapp
 
 // BLS functions
 
-export const blsFunc = (functionName, params) => {
+export const blsFunc = function(functionName, params) {
     
     // Increase the amount of burned gas depends on function & params
 
@@ -84,7 +84,7 @@ export const blsFunc = (functionName, params) => {
 
 // PQC (Post-Quantum Cryptography) functions
 
-export const pqc = (algorithm, signedData, pubKey, signature) => {
+export const pqc = function(algorithm, signedData, pubKey, signature) {
 
     this.contractGasHandler.gasBurned += 60000;
 
@@ -98,7 +98,7 @@ export const pqc = (algorithm, signedData, pubKey, signature) => {
 
 // TBLS (Threshold BLS) functions
 
-export const tblsVerify = (masterPubKey, masterSigna, signedData) => {
+export const tblsVerify = function(masterPubKey, masterSigna, signedData) {
 
     this.contractGasHandler.gasBurned += 60000;
 
@@ -107,7 +107,7 @@ export const tblsVerify = (masterPubKey, masterSigna, signedData) => {
 };
 
 // Ed25519 functions
-export const ed25519 = (signedData, pubKey, signature) => {
+export const ed25519 = function(signedData, pubKey, signature) {
 
     this.contractGasHandler.gasBurned += 10000;
 
@@ -116,21 +116,21 @@ export const ed25519 = (signedData, pubKey, signature) => {
 };
 
 // SSS (Shamir's Secret Sharing) placeholder function
-export const sss = () => {
+export const sss = function() {
 
     this.contractGasHandler.gasBurned += 60000;
 
 };
 
 // MPC (Multi-Party Computation) placeholder function
-export const mpc = () => {
+export const mpc = function() {
 
     this.contractGasHandler.gasBurned += 60000;
 
 };
 
 // FHE (Fully Homomorphic Encryption) placeholder function
-export const fhe = () => {
+export const fhe = function() {
 
     this.contractGasHandler.gasBurned += 60000;
 
@@ -146,7 +146,7 @@ export const fhe = () => {
     * @param {*} plonkProof 
     * @returns 
 */
-export const zkSNARK = async (protoName, verificationKey, publicInputs, plonkProof) => {
+export const zkSNARK = async function(protoName, verificationKey, publicInputs, plonkProof) {
 
     this.contractGasHandler.gasBurned += 60000;
 
@@ -157,7 +157,7 @@ export const zkSNARK = async (protoName, verificationKey, publicInputs, plonkPro
 
 
 
-export let getRandomValue = () => {
+export let getRandomValue = function() {
 
     this.contractGasHandler.gasBurned += 6000;
 
@@ -180,7 +180,7 @@ export let getRandomValue = () => {
 
 
 
-export let verifyVrfRandomValue = (randomHashAsHexString,dataAsHexString,pubkeyAsHexString,proofAsHexString) => {
+export let verifyVrfRandomValue = function(randomHashAsHexString,dataAsHexString,pubkeyAsHexString,proofAsHexString) {
 
     this.contractGasHandler.gasBurned += 60000;
 
@@ -206,7 +206,7 @@ export let verifyVrfRandomValue = (randomHashAsHexString,dataAsHexString,pubkeyA
 
 
 
-export let getFromState = key => {
+export let getFromState = function (key) {
 
     this.contractGasHandler.gasBurned += 1000;
         
@@ -218,7 +218,7 @@ export let getFromState = key => {
 
 
 
-export let setToState = (key,value) => {
+export let setToState = function(key,value) {
 
     this.contractGasHandler.gasBurned += 5000;
 
@@ -233,7 +233,7 @@ export let setToState = (key,value) => {
 
 
 // Function transfer native coins to another account(used for WVM)
-export let transferNativeCoins = amount => {
+export let transferNativeCoins = function(amount) {
 
     this.contractGasHandler.gasBurned += 1000;
 

@@ -1,8 +1,8 @@
-import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES} from '../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from './quorum_related.js'
 
-import {verifyEd25519} from '../../../KLY_Utils/utils.js'
+import {verifyEd25519, verifyEd25519Sync} from '../../../KLY_Utils/utils.js'
 
 import Block from '../structures/block.js'
 
@@ -332,4 +332,34 @@ export let getFirstBlockOnEpochOnSpecificShard = async(epochHandler,shardID,getB
 
     }
 
+}
+
+
+
+
+export let verifyQuorumMajoritySolution = function(dataThatShouldBeSigned,agreementsMapping) {
+
+    this.contractGasHandler.gasBurned += 60000;
+
+    // Take the epoch handler on verification thread (VT)
+
+    let epochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
+    
+    let majority = getQuorumMajority(epochHandler)
+
+    let okSignatures = 0
+
+
+    for(let [quorumMemberPubKey,signa] of Object.entries(agreementsMapping)){
+
+        if(verifyEd25519Sync(dataThatShouldBeSigned,signa,quorumMemberPubKey) && epochHandler.quorum.includes(quorumMemberPubKey)){
+
+            okSignatures++
+
+        }
+
+    }
+
+    return okSignatures >= majority
+    
 }
