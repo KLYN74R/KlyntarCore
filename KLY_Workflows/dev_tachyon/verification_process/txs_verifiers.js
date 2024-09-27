@@ -479,8 +479,8 @@ export let VERIFIERS = {
         
                             let gasLimit = tx.payload.gasLimit
         
-                            let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(Buffer.from(contractBytecode,'hex'), gasLimit, getMethodsToInject(tx.payload.imports))
-        
+                            let {contractInstance,contractGasHandler} = await VM.bytesToMeteredContract(Buffer.from(contractBytecode,'hex'), gasLimit, getMethodsToInject(tx.payload.imports))
+
                             let methodToCall = tx.payload.method
         
                             let paramsToPass = tx.payload.params
@@ -491,7 +491,7 @@ export let VERIFIERS = {
         
                             // Call contract
         
-                            let resultAsJson = VM.callContract(contractInstance,contractMetadata,paramsToPass,methodToCall,contractMetadata.lang)
+                            let resultAsJson = VM.callContract(contractInstance,contractGasHandler,paramsToPass,methodToCall,contractGasHandler.lang)
                            
                             execResultWithStatusAndReason = {isOk:true,extraData:JSON.parse(resultAsJson)} // TODO: Limit the size of <extraData> field
         

@@ -114,7 +114,7 @@ export default class ContractInstance {
 
 
         //Prepare pointer to contract metadata to track changes in gas changes
-        let contractMetadata = {
+        let contractGasHandler = {
 
             gasLimit,
             gasBurned:0
@@ -129,9 +129,9 @@ export default class ContractInstance {
                 
                 burnGas: gasAmount => {
                     
-                    contractMetadata.gasBurned += gasAmount
+                    contractGasHandler.gasBurned += gasAmount
             
-                    if (contractMetadata.gasBurned > contractMetadata.gasLimit) throw new Error(`No more gas => Limit:${contractMetadata.gasLimit}        |       Burned:${contractMetadata.gasBurned}`)
+                    if (contractGasHandler.gasBurned > contractGasHandler.gasLimit) throw new Error(`No more gas => Limit:${contractGasHandler.gasLimit}        |       Burned:${contractGasHandler.gasBurned}`)
           
                 }
             
@@ -144,7 +144,7 @@ export default class ContractInstance {
         
         this.wasm = contractInstance
 
-        return {contractInstance,contractMetadata}
+        return {contractInstance,contractGasHandler}
 
     }
 
