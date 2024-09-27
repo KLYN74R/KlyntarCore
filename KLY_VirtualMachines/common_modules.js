@@ -14,10 +14,8 @@ import {ProofHoHash} from '@idena/vrf-js'
 
 
 let {createRequire} = await import('module');
-                
-let require = createRequire(import.meta.url);
 
-let snarkjs = require('snarkjs');
+let snarkjs = createRequire(import.meta.url)('snarkjs');
 
 
 
@@ -227,7 +225,7 @@ export let setToState=(key,value)=>{
 
     let valueValue = this.contract.exports.__getString(value);
         
-    this.contractStorage.set(keyValue,valueValue);
+    this.contractStorage[keyValue] = valueValue;
 
 }
 
@@ -235,7 +233,7 @@ export let setToState=(key,value)=>{
 
 
 // Function transfer native coins to another account(used for WVM)
-export let transferNativeCoins = function(amount) {
+export let transferNativeCoins = amount => {
 
     this.contractGasHandler.gasBurned += 1000;
 
