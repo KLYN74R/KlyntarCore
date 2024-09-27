@@ -27,9 +27,9 @@ export let VM = {
 
         let contract = new ContractInstance(extraModules,contractBytecodeAsBuffer)
 
-        let contractHandlerWithMetadata = await contract.setUpContract(gasLimit) // return instance and pointer to metadata to track gas changes => {contractInstance,contractMetadata}
+        let contractInstanceWithGasHandler = await contract.setUpContract(gasLimit) // return instance and pointer to metadata to track gas changes => {contractInstance,contractGasHandler}
 
-        return contractHandlerWithMetadata
+        return contractInstanceWithGasHandler
         
     },
 
@@ -38,13 +38,13 @@ export let VM = {
      * 
      *  
      * @param {*} contractInstance - WASM contract instance with injected modules e.g. "metering" and another extra functionality 
-     * @param {*} contractMetadata - handler for gas used metering
+     * @param {*} contractGasHandler - handler for gas used metering
      * @param {Object} params - object that we should pass to contract
      * @param {*} functionName - function name of contract that we should call
      * @param {'Rust'|'AssemblyScript'} contractLang
      * @returns 
      */
-    callContract:(contractInstance,contractMetadata,params,functionName,contractLang)=>{
+    callContract:(contractInstance,contractGasHandler,params,functionName,contractLang)=>{
 
         let result
 
@@ -62,7 +62,7 @@ export let VM = {
 
         // Returns result as JSON
 
-        return {result,contractMetadata}
+        return {result,contractGasHandler}
 
     },
 

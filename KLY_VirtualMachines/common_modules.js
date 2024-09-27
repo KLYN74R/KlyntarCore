@@ -14,10 +14,8 @@ import {ProofHoHash} from '@idena/vrf-js'
 
 
 let {createRequire} = await import('module');
-                
-let require = createRequire(import.meta.url);
 
-let snarkjs = require('snarkjs');
+let snarkjs = createRequire(import.meta.url)('snarkjs');
 
 
 
@@ -39,81 +37,11 @@ let snarkjs = require('snarkjs');
 */
 
 
-// To set the gas prices for these cryptography primitives - see the txs_verifiers.js
-
-export let cryptography = {
-
-    bls:(functionName,params)=>{
-
-        let gasSpent = 0 // TODO
-
-        // Available functions => singleVerify, aggregatePublicKeys, aggregateSignatures, verifyThresholdSignature
-
-        let result = bls[functionName](...params)
-
-        return {result,gasSpent}
-
-    },
-
-    pqc:(algorithm,signedData,pubKey,signature)=>{
-
-        let gasSpent = 0
-
-        // Available functions BLISS / Dilithium
-
-        let result = globalThis[algorithm === 'bliss'?'verifyBlissSignature':'verifyDilithiumSignature'](signedData,pubKey,signature)
-       
-        return {result,gasSpent}
-
-    },
-
-    tbls:(masterPubKey,masterSigna,signedData)=>{
-
-        return {
-
-            gasSpent: 6000,
-            
-            result: tbls.verifyTBLS(masterPubKey,masterSigna,signedData)
-
-        }
-
-    },
-
-    ed25519:(signedData,pubKey,signature)=>{
-
-        return {
-
-            gasSpent:5000,
-
-            result:verifyEd25519Sync(signedData,signature,pubKey)
-
-        }
-
-    },
-
-    sss:()=>{},
-
-    mpc:()=>{},
-
-    fhe:()=>{},
-
-
-    /**
-    * 
-    * @param {'groth16'|'plonk'|'fflonk'} protoName 
-    * @param {*} verificationKey 
-    * @param {*} publicInputs 
-    * @param {*} plonkProof 
-    * @returns 
-    */
-    zkSNARK:async(protoName,verificationKey, publicInputs, plonkProof) => snarkjs[protoName].verify(verificationKey, publicInputs, plonkProof)
-
-}
-
-
 
 
 export let verifyQuorumMajoritySolution = (dataThatShouldBeSigned,agreementsMapping) => {
+
+    this.contractGasHandler.gasBurned += 60000;
 
     // Take the epoch handler on verification thread (VT)
 
@@ -140,8 +68,98 @@ export let verifyQuorumMajoritySolution = (dataThatShouldBeSigned,agreementsMapp
 
 
 
+// BLS functions
+
+export const blsFunc = (functionName, params) => {
+    
+    // Increase the amount of burned gas depends on function & params
+
+    this.contractGasHandler.gasBurned += 50000;
+    
+    // Available functions => singleVerify, aggregatePublicKeys, aggregateSignatures, verifyThresholdSignature
+        
+    return bls[functionName](...params);
+
+};
+
+// PQC (Post-Quantum Cryptography) functions
+
+export const pqc = (algorithm, signedData, pubKey, signature) => {
+
+    this.contractGasHandler.gasBurned += 60000;
+
+    // Available functions BLISS / Dilithium
+
+    let result = globalThis[algorithm === 'bliss' ? 'verifyBlissSignature' : 'verifyDilithiumSignature'](signedData, pubKey, signature);
+
+    return result;
+
+};
+
+// TBLS (Threshold BLS) functions
+
+export const tblsVerify = (masterPubKey, masterSigna, signedData) => {
+
+    this.contractGasHandler.gasBurned += 60000;
+
+    return tbls.verifyTBLS(masterPubKey, masterSigna, signedData);
+
+};
+
+// Ed25519 functions
+export const ed25519 = (signedData, pubKey, signature) => {
+
+    this.contractGasHandler.gasBurned += 10000;
+
+    return verifyEd25519Sync(signedData, signature, pubKey);
+
+};
+
+// SSS (Shamir's Secret Sharing) placeholder function
+export const sss = () => {
+
+    this.contractGasHandler.gasBurned += 60000;
+
+};
+
+// MPC (Multi-Party Computation) placeholder function
+export const mpc = () => {
+
+    this.contractGasHandler.gasBurned += 60000;
+
+};
+
+// FHE (Fully Homomorphic Encryption) placeholder function
+export const fhe = () => {
+
+    this.contractGasHandler.gasBurned += 60000;
+
+};
+
+// zkSNARK (Zero-Knowledge Succinct Non-Interactive Argument of Knowledge) functions
+
+/**
+    * 
+    * @param {'groth16'|'plonk'|'fflonk'} protoName 
+    * @param {*} verificationKey 
+    * @param {*} publicInputs 
+    * @param {*} plonkProof 
+    * @returns 
+*/
+export const zkSNARK = async (protoName, verificationKey, publicInputs, plonkProof) => {
+
+    this.contractGasHandler.gasBurned += 60000;
+
+    return snarkjs[protoName].verify(verificationKey, publicInputs, plonkProof);
+
+};
+
+
+
 
 export let getRandomValue = () => {
+
+    this.contractGasHandler.gasBurned += 6000;
 
     /*
     
@@ -163,6 +181,8 @@ export let getRandomValue = () => {
 
 
 export let verifyVrfRandomValue = (randomHashAsHexString,dataAsHexString,pubkeyAsHexString,proofAsHexString) => {
+
+    this.contractGasHandler.gasBurned += 60000;
 
     // Deserialize (string => []uint8) and verify equality
 
@@ -186,28 +206,39 @@ export let verifyVrfRandomValue = (randomHashAsHexString,dataAsHexString,pubkeyA
 
 
 
+export let getFromState = key => {
 
-// Function to bind to appropriate contract storage and call get/set operations in a seamless way within contract call
-export let stateInteraction = function(getOrSetOperation,idOfRecord,jsonStringToStore) {
-
-    if(getOrSetOperation === 'get') return this[idOfRecord] || ''
-
-    else if(getOrSetOperation === 'set'){
-
-        this[idOfRecord] = JSON.parse(jsonStringToStore)
-
-    }
+    this.contractGasHandler.gasBurned += 1000;
+        
+    let keyValue = this.contract.exports.__getString(key);
+    
+    return this.contract.exports.__newString(JSON.stringify(this.contractStorage[keyValue] || ''));
 
 }
 
 
 
+export let setToState = (key,value) => {
+
+    this.contractGasHandler.gasBurned += 5000;
+
+    let keyValue = this.contract.exports.__getString(key);
+
+    let valueValue = this.contract.exports.__getString(value);
+
+    this.contractStorage[keyValue] = valueValue;
+
+}
+
+
 
 // Function transfer native coins to another account(used for WVM)
-export let transferNativeCoins = function(amount) {
+export let transferNativeCoins = amount => {
 
-    this.from.balance -= amount
+    this.contractGasHandler.gasBurned += 1000;
 
-    this.to.balance += amount
+    this.contractAccount.balance -= amount
+
+    this.recipientAccount.balance += amount
 
 }
