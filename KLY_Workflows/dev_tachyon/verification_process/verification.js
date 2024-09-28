@@ -1424,7 +1424,7 @@ let executeTransaction = async (shardContext,currentBlockID,transaction,rewardsA
 
         let txCopy = JSON.parse(JSON.stringify(transaction))
 
-        let {isOk,reason,createdContractAddress} = await VERIFIERS[transaction.type](shardContext,txCopy,rewardsAndSuccessfulTxsCollector,atomicBatch).catch(()=>({isOk:false,reason:'Unknown'}))
+        let {isOk,reason,createdContractAddress} = await VERIFIERS[transaction.type](shardContext,txCopy,rewardsAndSuccessfulTxsCollector,atomicBatch).catch(err=>({isOk:false,reason:err}))
 
         // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
         if(reason!=='EVM' && reason!=='Replay'){
