@@ -108,13 +108,15 @@ export let WVM = {
 
         if(contractLang==='Rust'){
 
-            result = contractInstance[functionName](params)
+            result = contractInstance[functionName](params);
 
         }else if(contractLang==='AssemblyScript'){
 
-            let pointerToParamsObject = contractInstance.__newString(params);
+            let pointerToParamsObject = contractInstance.__newString(JSON.stringify(params[0]));
 
-            result = contractInstance.__getString(contractInstance[functionName](pointerToParamsObject))
+            contractInstance[functionName](pointerToParamsObject)
+
+            result = contractInstance.__getString(contractInstance[functionName](pointerToParamsObject));
 
         }
 

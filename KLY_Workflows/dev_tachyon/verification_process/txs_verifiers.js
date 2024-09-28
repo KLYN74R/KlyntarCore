@@ -526,7 +526,9 @@ export let VERIFIERS = {
         
                             let resultAsJson = WVM.callContract(contractInstance,contractGasHandler,paramsToPass,methodToCall, contractMetadata.lang)
                            
-                            execResultWithStatusAndReason = {isOk:true,extraData:JSON.parse(resultAsJson)} // TODO: Limit the size of <extraData> field
+                            let extraDataToReceipt = resultAsJson.result ? JSON.parse(resultAsJson.result) : ''
+
+                            execResultWithStatusAndReason = {isOk:true,extraDataToReceipt} // TODO: Limit the size of <extraData> field
         
                         } else execResultWithStatusAndReason = {isOk:false,reason:`No metadata for contract`}
         

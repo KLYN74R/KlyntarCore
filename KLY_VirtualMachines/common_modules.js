@@ -226,7 +226,7 @@ export let setToState = function(key,value) {
 
     let valueValue = this.contractInstance.__getString(value);
         
-    this.contractStorage[keyValue] = valueValue;
+    this.contractStorage[keyValue] = JSON.parse(valueValue);
 
 }
 
