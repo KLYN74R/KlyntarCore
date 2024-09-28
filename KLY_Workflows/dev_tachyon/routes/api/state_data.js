@@ -191,7 +191,7 @@ FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
                 
                 storages:[],
                 
-                storageAbstractionLastPayment: -1
+                storageAbstractionLastPayment: 0
             
             }
 
