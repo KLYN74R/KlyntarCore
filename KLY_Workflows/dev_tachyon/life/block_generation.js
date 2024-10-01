@@ -89,7 +89,8 @@ let nonces = {};
 
 let generateBatchOfMockTransactionsAndPushToMempool = async shardID => {
 
-    const recipient = 'nXSYHp74u88zKPiRi7t22nv4WCBHXUBpGrVw3V93f2s';
+    const recipient = 'Cw4MjAsm5gRQh7JaiYXvJ9kzgt5xemhe1789kvcXY1Pz';
+
 
     for(let [pubKey,privateKey] of Object.entries(mockTestPairs)){
 
