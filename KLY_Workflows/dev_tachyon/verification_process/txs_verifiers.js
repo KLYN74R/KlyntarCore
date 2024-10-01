@@ -440,7 +440,7 @@ export let VERIFIERS = {
             contractID:<BLAKE3 hashID of contract OR alias of contract(for example, system contracts)>,
             method:<string method to call>,
             gasLimit:<maximum allowed in KLY to execute contract>
-            params:[] params to pass to function
+            params:{} params to pass to function
             imports:[] imports which should be included to contract instance to call. Example ['default.CROSS-CONTRACT','storage.GET_FROM_ARWEAVE']. As you understand, it's form like <MODULE_NAME>.<METHOD_TO_IMPORT>
         
         }
@@ -521,6 +521,26 @@ export let VERIFIERS = {
                             contractHandler.contractInstance = contractInstance
 
                             contractHandler.contractGasHandler = contractGasHandler
+
+                            // In case contract call have zk verificaiton requirement - verify it because since it's async - impossible to do it from contract
+
+                            if(paramsToPass.zkVerifyRequest){
+
+                                let {protoName,publicInputs,proof} = paramsToPass.zkVerifyRequest
+
+                                // Extract vKey from contract storage
+
+                                let verificationKey = contractStorage.vKey
+
+                                contractGasHandler.gasBurned += 60000;
+
+                                let zkProofIsOk = await functionsToInjectToVm.zkSNARK(protoName,verificationKey,publicInputs,proof)
+
+                                // Pass the zk verification to payload to read it from contract logic
+
+                                paramsToPass.zkProofIsOk = zkProofIsOk
+
+                            }
 
                             // Call contract
         

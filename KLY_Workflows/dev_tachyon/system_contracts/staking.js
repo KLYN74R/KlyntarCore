@@ -21,7 +21,7 @@ export let CONTRACT = {
     
         Method to burn KLY / UNO to make it possible to stake on some pool
 
-        transaction.payload.params[0] is:
+        transaction.payload.params is:
 
         {
             poolPubKey:<Format is Ed25519>,
@@ -35,7 +35,7 @@ export let CONTRACT = {
 
         let txCreatorAccount = await getUserAccountFromState(originShard+':'+transaction.creator)
 
-        let {poolPubKey,randomChallenge,amount,units} = transaction.payload.params[0]
+        let {poolPubKey,randomChallenge,amount,units} = transaction.payload.params
 
         let epochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
 

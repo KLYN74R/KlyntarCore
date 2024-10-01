@@ -33,7 +33,7 @@ export let CONTRACT = {
 
             ----------------------------------------------------------
 
-            transaction.payload.params[0] is:
+            transaction.payload.params is:
 
             {
                 moveToShard:'',
@@ -52,7 +52,7 @@ export let CONTRACT = {
 
         let txCreatorAccount = await getUserAccountFromState(originShard+':'+transaction.creator)
 
-        let {moveToShard,recipient,recipientNextNonce,amount} = transaction.payload.params[0]
+        let {moveToShard,recipient,recipientNextNonce,amount} = transaction.payload.params
 
 
         if(txCreatorAccount.type === 'eoa' && typeof moveToShard === 'string' && typeof recipient === 'string' && typeof recipientNextNonce === 'number' && typeof amount === 'number' && amount <= txCreatorAccount.balance){
@@ -80,7 +80,7 @@ export let CONTRACT = {
 
             ----------------------------------------------------------
 
-            transaction.payload.params[0] is:
+            transaction.payload.params is:
 
             {
 
@@ -113,7 +113,7 @@ export let CONTRACT = {
 
         let txCreatorAccount = await getUserAccountFromState(originShard+':'+transaction.creator)
 
-        let {moveToShard,recipient,recipientNextNonce,amount, quorumAgreements} = transaction.payload.params[0]
+        let {moveToShard,recipient,recipientNextNonce,amount, quorumAgreements} = transaction.payload.params
 
         if(!txCreatorAccount){
 

@@ -27,17 +27,17 @@ export let CONTRACT = {
 
         /*
         
-            Format of transaction.payload.params[0] is
+            Format of transaction.payload.params is
        
             {
 
                 params:{
 
-                    agreementText:'fjflksjl flsjl flksl fjlsdkjfls. If delivery delay with to transfer 5 KLY to account <bblalba>',
+                    agreementText:'Lorem ipsum dolor sit amet. If delivery delay with to transfer 5 KLY to account <bblalba>',
 
                     delegations:{
 
-                        account1:[], // delegations in form of {contract:'',method:'',params:[]}
+                        account1:[], // delegations in form of {contract:'',method:'',params:{}}
                     
                         account2:[],
 
@@ -62,15 +62,11 @@ export let CONTRACT = {
                 }
 
             }
-
-            ------------- What to do ? -------------
-
-            Just put the contract to BLOCKCHAIN_DATABASES.STATE and bind to <origin shard>. Contract ID is BLAKE3(transaction.payload.params[0])
-
         
         */
 
         // Create metadata first
+        
         let futureRwxContractMetadataTemplate = {
 
             type:'contract',
@@ -84,7 +80,7 @@ export let CONTRACT = {
         }
 
         // ...then - create a single storage for this new contract to store the body itself
-        let futureRwxContractSingleStorage = transaction.payload.params[0]
+        let futureRwxContractSingleStorage = transaction.payload.params
 
         let contractID = blake3Hash(originShard+transaction.creator+transaction.nonce)
 
@@ -110,7 +106,7 @@ export let CONTRACT = {
 
         /*
         
-            Format of transaction.payload.params[0] is
+            Format of transaction.payload.params is
 
             {
 
@@ -151,7 +147,7 @@ export let CONTRACT = {
     
         let dataThatShouldBeSigned = `RWX:${epochFullID}:${payloadJSON}`
     
-        let proofsByQuorumMajority = transaction.payload?.params?.[0]?.quorumAgreements
+        let proofsByQuorumMajority = transaction.payload?.params?.quorumAgreements
 
 
 
@@ -159,7 +155,7 @@ export let CONTRACT = {
 
             // Now, parse the rest data from payload and execute all inner txs
 
-            let {rwxContractId, executionBatch} = transaction.payload.params[0]
+            let {rwxContractId, executionBatch} = transaction.payload.params
 
             // Check if it's not a same-block-replay attack
 

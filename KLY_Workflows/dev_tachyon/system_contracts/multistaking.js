@@ -21,7 +21,7 @@ export let CONTRACT = {
 
         /*
         
-            transaction.payload.params[0] is 
+            transaction.payload.params is 
 
             {
 
@@ -48,7 +48,7 @@ export let CONTRACT = {
         
         */
 
-        let {amountUno, action, quorumAgreements} = transaction.payload.params[0]
+        let {amountUno, action, quorumAgreements} = transaction.payload.params
 
         if(typeof amountUno === 'number' && typeof action === 'string' && typeof quorumAgreements === 'object'){
 

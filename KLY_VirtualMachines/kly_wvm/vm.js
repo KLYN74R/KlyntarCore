@@ -112,7 +112,7 @@ export let WVM = {
 
         }else if(contractLang==='AssemblyScript'){
 
-            let pointerToParamsObject = contractInstance.__newString(JSON.stringify(params[0]));
+            let pointerToParamsObject = contractInstance.__newString(JSON.stringify(params));
 
             contractInstance[functionName](pointerToParamsObject)
 
