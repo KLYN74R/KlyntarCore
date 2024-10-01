@@ -2,8 +2,9 @@ import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, NODE_METADATA, WORKING_THR
 
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
-import { getUserAccountFromState } from '../common_functions/state_interactions.js'
 import {verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
+
+import {getUserAccountFromState} from '../common_functions/state_interactions.js'
 
 import {signEd25519} from '../../../KLY_Utils/utils.js'
 
@@ -118,17 +119,31 @@ let generateBatchOfMockTransactionsAndPushToMempool = async shardID => {
 
         let signedTx
 
+        let payload = {
+
+            to: recipient,
+
+            amount: amountInKLY,
+
+            touchedAccounts: [pubKey, recipient]
+
+        }
+
         if(pubKey.startsWith('0x')){
 
-            let singleSig = web1337.signDataForMultisigTransaction(shardID,privateKey,pubKey,[],nonce,fee,recipient,amountInKLY)
+            payload.active = pubKey
+            
+            payload.afk = []
+            
+            let singleSig = web1337.signDataForMultisigTransaction(shardID,'TX',privateKey,nonce,fee,payload)
 
             let signature = singleSig
 
-            signedTx = await web1337.createMultisigTransaction(from,from,signature,[],nonce,fee,recipient,amountInKLY)
+            signedTx = await web1337.createMultisigTransaction(from,'TX',signature,nonce,fee,payload)
 
         } else {
 
-            signedTx = await web1337.createEd25519Transaction(shardID,from,myPrivateKey,nonce,recipient,fee,amountInKLY);
+            signedTx = await web1337.createEd25519Transaction(shardID,'TX',from,myPrivateKey,nonce,fee,payload);
 
         }
 
@@ -160,7 +175,18 @@ let generateBatchOfMockTransactionsAndPushToMempool = async shardID => {
 
     const amountInKLY = 2;
 
-    let signedPqcTx = await web1337.createPostQuantumTransaction(shardID,'bliss',from,myPrivateKey,nonce,recipient,amountInKLY,fee)
+    
+    let payload = {
+
+        to: recipient,
+
+        amount: amountInKLY,
+
+        touchedAccounts: [from, recipient]
+
+    }
+
+    let signedPqcTx = await web1337.createPostQuantumTransaction(shardID,'TX','bliss',from,myPrivateKey,nonce,fee,payload)
 
     console.log(`PQC TXID is => `,web1337.blake3(signedPqcTx.sig))
 
