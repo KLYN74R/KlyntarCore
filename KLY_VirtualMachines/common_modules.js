@@ -143,14 +143,12 @@ export const fhe = function() {
     * @param {'groth16'|'plonk'|'fflonk'} protoName 
     * @param {*} verificationKey 
     * @param {*} publicInputs 
-    * @param {*} plonkProof 
+    * @param {*} proof 
     * @returns 
 */
-export const zkSNARK = async function(protoName, verificationKey, publicInputs, plonkProof) {
+export const zkSNARK = async function(protoName, verificationKey, publicInputs, proof) {
 
-    this.contractGasHandler.gasBurned += 60000;
-
-    return snarkjs[protoName].verify(verificationKey, publicInputs, plonkProof);
+    return snarkjs[protoName].verify(verificationKey, publicInputs, proof);
 
 };
 

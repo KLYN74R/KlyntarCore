@@ -42,13 +42,9 @@ export let CONTRACT = {
         method:'createStakingPool',
         gasLimit:0,
         imports:[],
-        params:[
-
-            {
-                shard, ed25519PubKey, percentage, overStake, poolURL, wssPoolURL
-            }
-
-        ]
+        params:{
+            shard, ed25519PubKey, percentage, overStake, poolURL, wssPoolURL
+        }
         
     Required input params
 
@@ -62,7 +58,7 @@ export let CONTRACT = {
     */
     createStakingPool:async (threadContext,transaction) => {
 
-        let {shard,ed25519PubKey,percentage,overStake,poolURL,wssPoolURL} = transaction.payload.params[0]
+        let {shard,ed25519PubKey,percentage,overStake,poolURL,wssPoolURL} = transaction.payload.params
 
         let poolAlreadyExists = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(ed25519PubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
@@ -134,7 +130,7 @@ export let CONTRACT = {
      
     Method to delegate your assets to some validator | pool once you have staking ticket
 
-    transaction.payload.params[0] is:
+    transaction.payload.params is:
 
     {
         poolPubKey:<Format is Ed25519_pubkey>,
@@ -154,7 +150,7 @@ export let CONTRACT = {
     
     stake:async(threadContext,transaction) => {
 
-        let {poolPubKey,randomChallenge,amount,units,quorumAgreements} = transaction.payload.params[0]
+        let {poolPubKey,randomChallenge,amount,units,quorumAgreements} = transaction.payload.params
 
         let poolStorage
 
@@ -241,7 +237,7 @@ export let CONTRACT = {
      
     Method to unstake from pool and get your assets back
 
-    transaction.payload.params[0] is:
+    transaction.payload.params is:
 
     {
         shardToAcceptAssets:<>,
@@ -254,7 +250,7 @@ export let CONTRACT = {
     */
     unstake:async (threadContext,transaction) => {
 
-        let {shardToAcceptAssets,epochFullID,poolToUnstakeFrom,amount,units} = transaction.payload.params[0]
+        let {shardToAcceptAssets,epochFullID,poolToUnstakeFrom,amount,units} = transaction.payload.params
 
         let poolStorage
 
@@ -350,7 +346,7 @@ export let CONTRACT = {
     */
     getRewardFromPool:async(threadContext,transaction) => {
 
-        let {poolToGetRewardsFrom} = transaction.payload.params[0]
+        let {poolToGetRewardsFrom} = transaction.payload.params
 
         let shardWherePoolStorageLocated = await getFromState(poolToGetRewardsFrom+'(POOL)_POINTER').catch(()=>null)
 

@@ -319,7 +319,7 @@ Params:
 
     [symbioteID,hostToAdd(initiator's valid and resolved host)]
 
-    [0] - symbiote ID       EXAMPLE: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    [0] - chain ID       EXAMPLE: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
     [1] - host to add       EXAMPLE: http://example.org | https://some.subdomain.org | http://cafe::babe:8888
 
 

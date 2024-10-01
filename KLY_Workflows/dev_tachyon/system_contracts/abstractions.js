@@ -24,7 +24,7 @@ export let CONTRACT = {
 
         /*
 
-            tx.payload.params[0] format is:
+            tx.payload.params format is:
 
             {
 
@@ -46,7 +46,7 @@ export let CONTRACT = {
         */
 
 
-        let {targetAccount, gasAmount, action, quorumAgreements} = transaction.payload.params[0] 
+        let {targetAccount, gasAmount, action, quorumAgreements} = transaction.payload.params
 
         if(typeof targetAccount === 'string' && typeof gasAmount === 'number' && typeof action === 'string' && typeof quorumAgreements === 'object'){
 
@@ -76,7 +76,7 @@ export let CONTRACT = {
 
             Method to charge some assets as a rent for storage used by contract. Once charge - update the .storageAbstractionLastPayment field to current value of epoch on VERIFICATION_THREAD        
         
-            tx.payload.params[0] format is:
+            tx.payload.params format is:
 
             {
 

@@ -54,7 +54,7 @@ export let CONTRACT = {
     */
     votingAccept:async(threadContext, transaction)=>{
 
-        let {votingType, payload, quorumAgreements} = transaction.payload.params[0]
+        let {votingType, payload, quorumAgreements} = transaction.payload.params
 
         let threadById = threadContext === 'APPROVEMENT_THREAD' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
 
@@ -102,7 +102,7 @@ export let CONTRACT = {
     */
     changeNumberOfShards:async(threadContext, transaction)=>{
 
-        let {shardID, operation, quorumAgreements} = transaction.payload.params[0]
+        let {shardID, operation, quorumAgreements} = transaction.payload.params
 
         let threadById = threadContext === 'APPROVEMENT_THREAD' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
 
