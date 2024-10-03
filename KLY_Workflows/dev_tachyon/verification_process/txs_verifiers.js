@@ -492,8 +492,11 @@ export let VERIFIERS = {
         
                             // Prepare the contract handler
         
-                            let gasLimit = tx.payload.gasLimit
+                            let gasLimit = BigInt(tx.payload.gasLimit)
+
+                            if(contractMetadata.lang === 'AssemblyScript') gasLimit *= 10n
         
+ 
                             let methodToCall = tx.payload.method
         
                             let paramsToPass = tx.payload.params

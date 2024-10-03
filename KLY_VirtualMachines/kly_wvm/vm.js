@@ -53,7 +53,7 @@ export let WVM = {
             })
 
 
-            let contractGasHandler = {gasLimit, gasBurned:0}
+            let contractGasHandler = {gasLimit, gasBurned:BigInt(0)}
 
 
             //Inject metering function
