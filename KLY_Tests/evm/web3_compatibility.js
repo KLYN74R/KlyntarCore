@@ -7,7 +7,7 @@ import Web3 from 'web3'
 //___________________________________ CONSTANTS POOL ___________________________________
 
 
-const web3 = new Web3('http://localhost:7333/kly_evm_rpc/shard_0')
+const web3 = new Web3('http://localhost:7332/kly_evm_rpc/shard_0')
 
 // KLY-EVM
 const common = Common.custom({name:'KLYNTAR',networkId:'0x1CA3',chainId:'0x1CA3'},{hardfork:'london'})
@@ -46,7 +46,6 @@ const evmAccount1 = {
 //   }
 
 
-// console.log(web3.utils.fromWei('0x1611b5050a19938','ether'))
 
 
 
@@ -94,7 +93,7 @@ let DEFAULT_SIMPLE_QUERIES=async()=>{
 
 let EVM_DEFAULT_TX = async() => {
 
-    let nonce = 0//await web3.eth.getTransactionCount(evmAccount0.address)
+    let nonce = await web3.eth.getTransactionCount(evmAccount0.address)
 
     // Build a transaction
     let txObject = {
@@ -109,7 +108,7 @@ let EVM_DEFAULT_TX = async() => {
         
         gasLimit: web3.utils.toHex(23000),
         
-        gasPrice: web3.utils.toHex(web3.utils.toWei('10','gwei')),
+        gasPrice: web3.utils.toHex(web3.utils.toWei('20','gwei')),
     
         //Set payload in hex
         data: `0x${Buffer.from('💡 KLYNTAR -> 4e34d2a0b21c54a10a40c8d99187f8dcecebff501f9a15e09230f18ff2ac4808').toString('hex')}`
