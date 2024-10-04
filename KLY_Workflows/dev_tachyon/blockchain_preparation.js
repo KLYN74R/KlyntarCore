@@ -287,7 +287,7 @@ let setGenesisToState=async()=>{
             uno:0,
             gas:0,
             storages:['POOL'],
-            storageAbstractionLastPayment:-1
+            storageAbstractionLastPayment:0
 
         }
         

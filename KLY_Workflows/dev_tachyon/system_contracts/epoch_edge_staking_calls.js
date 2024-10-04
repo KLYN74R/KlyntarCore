@@ -62,7 +62,9 @@ export let CONTRACT = {
 
         let poolAlreadyExists = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(ed25519PubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
-        if(!poolAlreadyExists && overStake>=0 && typeof shard === 'string' && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
+        if(!poolAlreadyExists && overStake>=0 && percentage >=0 && typeof shard === 'string' && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
+
+
 
             let contractMetadataTemplate = {
 
@@ -72,7 +74,7 @@ export let CONTRACT = {
                 uno:0,
                 gas:0,
                 storages:['POOL'],
-                storageAbstractionLastPayment:-1
+                storageAbstractionLastPayment:0
 
             }
 

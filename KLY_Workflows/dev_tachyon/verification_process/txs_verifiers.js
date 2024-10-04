@@ -32,15 +32,15 @@ import web3 from 'web3'
 
 let getCostPerSignatureType = transaction => {
 
-    if(transaction.sigType==='D' || typeof transaction.payload.abstractionBoosts === 'object') return 0 // In case it's default ed25519 or AAv2 - don't charge extra fees
+    if(transaction.sigType==='D') return 0.005
     
-    if(transaction.sigType==='T') return 0.00001
+    if(transaction.sigType==='T') return 0.01
 
-    if(transaction.sigType==='P/D') return 0.0001
+    if(transaction.sigType==='P/D') return 0.015
 
-    if(transaction.sigType==='P/B') return 0.00007
+    if(transaction.sigType==='P/B') return 0.015
 
-    if(transaction.sigType==='M') return 0.00001 + transaction.payload.afk.length * 0.00001
+    if(transaction.sigType==='M') return 0.007 + transaction.payload.afk.length * 0.001
 
     return 0
 

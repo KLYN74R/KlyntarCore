@@ -75,7 +75,7 @@ export let CONTRACT = {
             uno:0,
             gas:0,
             storages:['DEFAULT'],
-            storageAbstractionLastPayment:-1
+            storageAbstractionLastPayment:0
 
         }
 
