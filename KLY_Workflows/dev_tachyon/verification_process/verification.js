@@ -4,7 +4,7 @@ import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GRACEFUL_STOP, GLOBAL_CACHES} fro
 
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
-import {customLog, blake3Hash, verifyEd25519, logColors} from '../../../KLY_Utils/utils.js'
+import {customLog, blake3Hash, logColors, verifyEd25519Sync} from '../../../KLY_Utils/utils.js'
 
 import {getAllKnownPeers, isMyCoreVersionOld, epochStillFresh} from '../utils.js'
 
@@ -171,31 +171,25 @@ let checkAggregatedLeaderRotationProofValidity = async (pubKeyOfSomePreviousLead
         let majority = getQuorumMajority(epochHandler)
 
         let dataThatShouldBeSigned = `LEADER_ROTATION_PROOF:${pubKeyOfSomePreviousLeader}:${firstBlockHash}:${skipIndex}:${skipHash}:${epochFullID}`
-
-        let promises = []
-    
+ 
         let okSignatures = 0
 
         let unique = new Set()
     
     
         for(let [signerPubKey,signa] of Object.entries(proofs)){
-    
-            promises.push(verifyEd25519(dataThatShouldBeSigned,signa,signerPubKey).then(isOK => {
 
-                if(isOK && epochHandler.quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
+            let isOk = verifyEd25519Sync(dataThatShouldBeSigned,signa,signerPubKey)
 
-                    unique.add(signerPubKey)
+            if(isOk && epochHandler.quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
 
-                    okSignatures++
+                unique.add(signerPubKey)
 
-                }
+                okSignatures++
 
-            }))
+            }
     
         }
-    
-        await Promise.all(promises)
 
         return okSignatures >= majority
 

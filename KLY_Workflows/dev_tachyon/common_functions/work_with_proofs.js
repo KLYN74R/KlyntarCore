@@ -2,7 +2,7 @@ import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../blockchai
 
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from './quorum_related.js'
 
-import {verifyEd25519, verifyEd25519Sync} from '../../../KLY_Utils/utils.js'
+import {verifyEd25519Sync} from '../../../KLY_Utils/utils.js'
 
 import Block from '../structures/block.js'
 
@@ -65,31 +65,26 @@ export let verifyAggregatedEpochFinalizationProof = async (itsProbablyAggregated
 
         let dataThatShouldBeSigned = 'EPOCH_DONE'+shard+lastLeader+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullID
 
-        let promises = []
-
         let okSignatures = 0
 
         let unique = new Set()
-
+        
 
         for(let [signerPubKey,signa] of Object.entries(itsProbablyAggregatedEpochFinalizationProof.proofs)){
 
-            promises.push(verifyEd25519(dataThatShouldBeSigned,signa,signerPubKey).then(isOK => {
+            let isOK = verifyEd25519Sync(dataThatShouldBeSigned,signa,signerPubKey)
 
-                if(isOK && quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
+            if(isOK && quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
 
-                    unique.add(signerPubKey)
+                unique.add(signerPubKey)
 
-                    okSignatures++
+                okSignatures++
 
-                }
-
-            }))
+            }
 
         }
 
-        await Promise.all(promises)
-        
+    
         if(okSignatures>=majority){
 
             return {
@@ -133,9 +128,6 @@ export let verifyAggregatedFinalizationProof = async (itsProbablyAggregatedFinal
 
         let majority = getQuorumMajority(epochHandler)
 
-
-        let promises = []
-
         let okSignatures = 0
 
         let unique = new Set()
@@ -143,24 +135,19 @@ export let verifyAggregatedFinalizationProof = async (itsProbablyAggregatedFinal
 
         for(let [signerPubKey,signa] of Object.entries(proofs)){
 
-            promises.push(verifyEd25519(dataThatShouldBeSigned,signa,signerPubKey).then(isOK => {
+            let isOK = verifyEd25519Sync(dataThatShouldBeSigned,signa,signerPubKey)
 
-                if(isOK && epochHandler.quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
+            if(isOK && epochHandler.quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
 
-                    unique.add(signerPubKey)
+                unique.add(signerPubKey)
 
-                    okSignatures++
+                okSignatures++
 
-                }
-
-            }))
+            }
 
         }
 
-        await Promise.all(promises)
-
         return okSignatures >= majority
-
 
     }
 

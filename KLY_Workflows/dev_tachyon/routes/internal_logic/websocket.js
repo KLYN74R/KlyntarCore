@@ -217,7 +217,7 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
 
                         
                     //_________________________________________2_________________________________________
-
+                   
 
                     let leadersSequenceForThisShardAndEpoch = epochHandler.leadersSequence[shardID]
 
@@ -302,7 +302,6 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
 
 
                 }
-
 
                 // Store the metadata for FINALIZATION_STATS
 
@@ -402,7 +401,6 @@ let returnFinalizationProofBasedOnTmbProof=async(parsedData,connection)=>{
         return
     
     }
-
 
     let {blockCreator,blockIndex,blockHash,previousBlockAFP,tmbProofs,tmbTicketID} = parsedData
 
@@ -568,7 +566,6 @@ let returnFinalizationProofBasedOnTmbProof=async(parsedData,connection)=>{
                     }
     
                 }
-
 
                 // Store the metadata for FINALIZATION_STATS
 
