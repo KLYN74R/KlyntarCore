@@ -32,15 +32,15 @@ import web3 from 'web3'
 
 let getCostPerSignatureType = transaction => {
 
-    if(transaction.sigType==='D' || typeof transaction.payload.abstractionBoosts === 'object') return 0 // In case it's default ed25519 or AAv2 - don't charge extra fees
+    if(transaction.sigType==='D') return 0.005
     
-    if(transaction.sigType==='T') return 0.00001
+    if(transaction.sigType==='T') return 0.01
 
-    if(transaction.sigType==='P/D') return 0.0001
+    if(transaction.sigType==='P/D') return 0.015
 
-    if(transaction.sigType==='P/B') return 0.00007
+    if(transaction.sigType==='P/B') return 0.015
 
-    if(transaction.sigType==='M') return 0.00001 + transaction.payload.afk.length * 0.00001
+    if(transaction.sigType==='M') return 0.007 + transaction.payload.afk.length * 0.001
 
     return 0
 
@@ -280,7 +280,13 @@ export let VERIFIERS = {
 
         if(tx && tx.fee >= 0 && senderAccount.type==='eoa'){
 
-            if(!recipientAccount){
+            if(tx.payload.toEVMAccount){
+
+                // It's transfer from native env to EVM
+
+                recipientAccount = await KLY_EVM.getAccount(tx.payload.toEVMAccount)
+
+            } else if(!recipientAccount){
     
                 // Create default empty account.Note-here without NonceSet and NonceDuplicates,coz it's only recipient,not spender.If it was spender,we've noticed it on sift process
                 recipientAccount = {
@@ -314,8 +320,26 @@ export let VERIFIERS = {
                 if(senderAccount.balance - goingToSpend.goingToSpendInNativeCurrency >= 0 && senderAccount.gas - goingToSpend.goingToBurnGasAmount >= 0){
 
                     senderAccount.balance -= goingToSpend.goingToSpendInNativeCurrency
-                
-                    recipientAccount.balance += tx.payload.amount
+
+                    senderAccount.balance = Number((senderAccount.balance).toFixed(9))-0.000000001
+
+                    let touchedAccounts = [tx.creator,tx.payload.to]
+
+                    if(tx.payload.toEVMAccount){
+
+                        recipientAccount.balance += BigInt(tx.payload.amount) * (BigInt(10) ** BigInt(18))
+
+                        await KLY_EVM.updateAccount(tx.payload.toEVMAccount,recipientAccount)
+                        
+                        touchedAccounts.push(tx.payload.toEVMAccount)
+
+                    } else {
+
+                        recipientAccount.balance += tx.payload.amount
+
+                        recipientAccount.balance = Number((recipientAccount.balance).toFixed(9))-0.000000001
+
+                    }
     
                     senderAccount.gas -= goingToSpend.goingToBurnGasAmount
                 
@@ -323,7 +347,7 @@ export let VERIFIERS = {
                     
                     rewardsAndSuccessfulTxsCollector.fees += tx.fee
 
-                    trackTransactionsList(originShard,blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,[tx.creator,tx.payload.to])
+                    trackTransactionsList(originShard,blake3Hash(tx.sig),tx.type,tx.sigType,tx.fee,touchedAccounts)
         
                     return {isOk:true}        
 
@@ -410,6 +434,9 @@ export let VERIFIERS = {
 
                     senderAccount.balance -= goingToSpend.goingToSpendInNativeCurrency
 
+                    senderAccount.balance = Number((senderAccount.balance).toFixed(9))-0.000000001
+
+
                     senderAccount.gas -= goingToSpend.goingToBurnGasAmount
             
                     senderAccount.nonce = tx.nonce
@@ -492,8 +519,11 @@ export let VERIFIERS = {
         
                             // Prepare the contract handler
         
-                            let gasLimit = tx.payload.gasLimit
+                            let gasLimit = BigInt(tx.payload.gasLimit)
+
+                            if(contractMetadata.lang === 'AssemblyScript') gasLimit *= 10n
         
+ 
                             let methodToCall = tx.payload.method
         
                             let paramsToPass = tx.payload.params
@@ -555,6 +585,8 @@ export let VERIFIERS = {
                     }
 
                     senderAccount.balance -= goingToSpend.goingToSpendInNativeCurrency
+
+                    senderAccount.balance = Number((senderAccount.balance).toFixed(9))-0.000000001
 
                     senderAccount.gas -= goingToSpend.goingToBurnGasAmount
             
@@ -627,6 +659,29 @@ export let VERIFIERS = {
 
                     atomicBatch.put('EVM_CONTRACT_DATA:'+receipt.contractAddress,{storageAbstractionLastPayment:WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id})
                     
+                }
+
+                // In case it was tx to account 0x00..7 - it's special transaction, maybe transfer from EVM to native env
+
+                if(tx.to === '0x0000000000000000000000000000000000000007'){
+
+                    let parsedData = JSON.parse(tx.data.slice(2))
+
+                    if(parsedData.to){
+
+                        let accountToTransfer = await getUserAccountFromState(originShard+':'+parsedData.to)
+
+                        // Transfer coins
+
+                        accountToTransfer.balance += totalSpentByTxInKLY
+
+                        accountToTransfer.balance = Number((accountToTransfer.balance).toFixed(9))-0.000000001
+                        
+
+                        touchedAccounts.push(accountToTransfer)
+
+                    }
+
                 }
 
                 trackTransactionsList(originShard,tx.hash,'EVM_CALL','ECDSA',payedFee,touchedAccounts)

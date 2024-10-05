@@ -79,7 +79,7 @@ export let executeEpochEdgeTransaction = async(threadID,tx) => {
             filteredTransaction = {
                 
                 v:tx.v,
-                fee:tx.fee,
+                fee:0,
                 creator:tx.creator,
                 type:tx.type,
                 nonce:tx.nonce,
@@ -453,7 +453,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                         operation structure is:
 
                         {   v,
-                            fee,
+                            fee:0,
                             creator,
                             type,
                             nonce,

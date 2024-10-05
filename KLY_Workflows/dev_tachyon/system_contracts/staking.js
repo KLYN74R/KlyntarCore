@@ -1,6 +1,6 @@
-/* eslint-disable no-unused-vars */
-import { WORKING_THREADS } from '../blockchain_preparation.js'
 import {getUserAccountFromState} from '../common_functions/state_interactions.js'
+
+import { WORKING_THREADS } from '../blockchain_preparation.js'
 
 
 
@@ -42,9 +42,21 @@ export let CONTRACT = {
 
         if(txCreatorAccount && typeof poolPubKey === 'string' && typeof randomChallenge === 'string' && typeof units === 'string' && typeof amount === 'number'){
             
-            if(units === 'kly' && amount <= txCreatorAccount.balance) txCreatorAccount.balance -= amount
+            if(units === 'kly' && amount <= txCreatorAccount.balance){
 
-            else if (units === 'uno' && amount <= txCreatorAccount.uno) txCreatorAccount.uno -= amount
+                txCreatorAccount.balance -= amount
+
+                txCreatorAccount.balance = Number((txCreatorAccount.balance).toFixed(9))-0.000000001
+
+            } 
+
+            else if (units === 'uno' && amount <= txCreatorAccount.uno){
+
+                txCreatorAccount.uno -= amount
+
+                txCreatorAccount.uno = Number((txCreatorAccount.uno).toFixed(9))-0.000000001
+
+            } 
 
             return {isOk:true, extraData:{poolPubKey,recipient:transaction.creator,randomChallenge,validUntill:epochHandler.id+100,amount,units}}
 

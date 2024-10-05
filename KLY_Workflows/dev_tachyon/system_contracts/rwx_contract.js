@@ -177,6 +177,8 @@ export let CONTRACT = {
 
                             recipientAccount.balance += subTx.amount
 
+                            recipientAccount.balance = Number((recipientAccount.balance).toFixed(9))-0.000000001
+
                             rwxContractRelatedToDeal.balance -= subTx.amount
 
                         }   

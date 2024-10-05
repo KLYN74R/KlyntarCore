@@ -62,7 +62,9 @@ export let CONTRACT = {
 
         let poolAlreadyExists = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(ed25519PubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
-        if(!poolAlreadyExists && overStake>=0 && typeof shard === 'string' && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
+        if(!poolAlreadyExists && overStake>=0 && percentage >=0 && typeof shard === 'string' && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
+
+
 
             let contractMetadataTemplate = {
 
@@ -72,7 +74,7 @@ export let CONTRACT = {
                 uno:0,
                 gas:0,
                 storages:['POOL'],
-                storageAbstractionLastPayment:-1
+                storageAbstractionLastPayment:0
 
             }
 
@@ -296,9 +298,17 @@ export let CONTRACT = {
         
                             if(unstakerAccount){
         
-                                if(units === 'kly') unstakerAccount.balance += amount
+                                if(units === 'kly'){
+
+                                    unstakerAccount.balance = Number((unstakerAccount.balance + amount).toFixed(9))-0.000000001
+
+                                }
         
-                                else if(units === 'uno') unstakerAccount.uno += amount
+                                else if(units === 'uno'){
+
+                                    unstakerAccount.uno = Number((unstakerAccount.uno += amount).toFixed(9))-0.000000001
+
+                                }
         
                             }
         
@@ -362,6 +372,8 @@ export let CONTRACT = {
             if(threadContext === 'VERIFICATION_THREAD'){
 
                 accountOfStakerToReceiveRewards.balance += poolStorage.stakers[transaction.creator].reward
+
+                accountOfStakerToReceiveRewards.balance = Number((accountOfStakerToReceiveRewards.balance).toFixed(9))-0.000000001
 
                 poolStorage.stakers[transaction.creator].reward = 0
 
