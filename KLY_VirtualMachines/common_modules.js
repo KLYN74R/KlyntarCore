@@ -235,8 +235,12 @@ export let transferNativeCoins = function(amount) {
 
     this.contractGasHandler.gasBurned += 1000;
 
-    this.contractAccount.balance -= amount
+    if(this.contractAccount.balance - amount >= 0){
 
-    this.recipientAccount.balance += amount
+        this.contractAccount.balance = Number((this.contractAccount.balance-amount).toFixed(9))-0.000000001
+
+        this.recipientAccount.balance = Number((this.recipientAccount.balance+amount).toFixed(9))-0.000000001
+
+    }
 
 }

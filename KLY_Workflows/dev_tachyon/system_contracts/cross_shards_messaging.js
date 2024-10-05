@@ -59,6 +59,9 @@ export let CONTRACT = {
 
             txCreatorAccount.balance -= amount
 
+            txCreatorAccount.balance = (txCreatorAccount.balance.toFixed(9)-0.000000001)
+
+
             return {isOk:true, extraData:{moveToShard,recipient,recipientNextNonce,amount}}
 
 
@@ -144,6 +147,8 @@ export let CONTRACT = {
             if(verifyQuorumMajoritySolution(dataThatShouldBeSigned,quorumAgreements)){
 
                 txCreatorAccount.balance += amount
+
+                txCreatorAccount.balance = (txCreatorAccount.balance.toFixed(9)-0.000000001)
 
                 return {isOk:true}
 

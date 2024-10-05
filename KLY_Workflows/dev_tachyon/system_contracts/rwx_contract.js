@@ -75,7 +75,7 @@ export let CONTRACT = {
             uno:0,
             gas:0,
             storages:['DEFAULT'],
-            storageAbstractionLastPayment:0
+            storageAbstractionLastPayment:-1
 
         }
 
@@ -110,7 +110,7 @@ export let CONTRACT = {
 
             {
 
-                rwxContractId:<BLAKE3 hash id of contrct on this shard>,
+                rwxContractId:<BLAKE3 hash id of contract on this shard>,
 
                 executionBatch:[
 
@@ -176,6 +176,8 @@ export let CONTRACT = {
                         if(recipientAccount && (rwxContractRelatedToDeal.balance - subTx.amount) >= 0){                          
 
                             recipientAccount.balance += subTx.amount
+
+                            recipientAccount.balance = Number((recipientAccount.balance).toFixed(9))-0.000000001
 
                             rwxContractRelatedToDeal.balance -= subTx.amount
 

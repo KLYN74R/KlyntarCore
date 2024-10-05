@@ -321,6 +321,8 @@ export let VERIFIERS = {
 
                     senderAccount.balance -= goingToSpend.goingToSpendInNativeCurrency
 
+                    senderAccount.balance = Number((senderAccount.balance).toFixed(9))-0.000000001
+
                     let touchedAccounts = [tx.creator,tx.payload.to]
 
                     if(tx.payload.toEVMAccount){
@@ -331,7 +333,13 @@ export let VERIFIERS = {
                         
                         touchedAccounts.push(tx.payload.toEVMAccount)
 
-                    } else recipientAccount.balance += tx.payload.amount
+                    } else {
+
+                        recipientAccount.balance += tx.payload.amount
+
+                        recipientAccount.balance = Number((recipientAccount.balance).toFixed(9))-0.000000001
+
+                    }
     
                     senderAccount.gas -= goingToSpend.goingToBurnGasAmount
                 
@@ -425,6 +433,9 @@ export let VERIFIERS = {
 
 
                     senderAccount.balance -= goingToSpend.goingToSpendInNativeCurrency
+
+                    senderAccount.balance = Number((senderAccount.balance).toFixed(9))-0.000000001
+
 
                     senderAccount.gas -= goingToSpend.goingToBurnGasAmount
             
@@ -575,6 +586,8 @@ export let VERIFIERS = {
 
                     senderAccount.balance -= goingToSpend.goingToSpendInNativeCurrency
 
+                    senderAccount.balance = Number((senderAccount.balance).toFixed(9))-0.000000001
+
                     senderAccount.gas -= goingToSpend.goingToBurnGasAmount
             
                     senderAccount.nonce = tx.nonce
@@ -661,6 +674,9 @@ export let VERIFIERS = {
                         // Transfer coins
 
                         accountToTransfer.balance += totalSpentByTxInKLY
+
+                        accountToTransfer.balance = Number((accountToTransfer.balance).toFixed(9))-0.000000001
+                        
 
                         touchedAccounts.push(accountToTransfer)
 
