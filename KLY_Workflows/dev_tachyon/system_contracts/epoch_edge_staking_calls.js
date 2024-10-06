@@ -300,13 +300,21 @@ export let CONTRACT = {
         
                                 if(units === 'kly'){
 
-                                    unstakerAccount.balance = Number((unstakerAccount.balance + amount).toFixed(9))-0.000000001
+                                    amount = Number(amount.toFixed(9))
+
+                                    unstakerAccount.balance += amount
+
+                                    unstakerAccount.balance -= 0.000000001
 
                                 }
         
                                 else if(units === 'uno'){
 
-                                    unstakerAccount.uno = Number((unstakerAccount.uno += amount).toFixed(9))-0.000000001
+                                    amount = Number(amount.toFixed(9))
+
+                                    unstakerAccount.uno += amount
+
+                                    unstakerAccount.uno -= 0.000000001
 
                                 }
         
@@ -371,9 +379,11 @@ export let CONTRACT = {
 
             if(threadContext === 'VERIFICATION_THREAD'){
 
-                accountOfStakerToReceiveRewards.balance += poolStorage.stakers[transaction.creator].reward
+                let forReward = Number(poolStorage.stakers[transaction.creator].reward.toFixed(9))
 
-                accountOfStakerToReceiveRewards.balance = Number((accountOfStakerToReceiveRewards.balance).toFixed(9))-0.000000001
+                accountOfStakerToReceiveRewards.balance += forReward
+
+                accountOfStakerToReceiveRewards.balance -= 0.000000001
 
                 poolStorage.stakers[transaction.creator].reward = 0
 

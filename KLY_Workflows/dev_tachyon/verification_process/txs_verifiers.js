@@ -221,7 +221,7 @@ let calculateAmountToSpendAndGasToBurn = tx => {
         } // TODO: Add EVM_CALL type
 
     }
-    
+
 
     return {goingToSpendInNativeCurrency,goingToBurnGasAmount}
 
@@ -319,15 +319,18 @@ export let VERIFIERS = {
 
                 if(senderAccount.balance - goingToSpend.goingToSpendInNativeCurrency >= 0 && senderAccount.gas - goingToSpend.goingToBurnGasAmount >= 0){
 
-                    senderAccount.balance -= goingToSpend.goingToSpendInNativeCurrency
+                    
+                    senderAccount.balance = Number((senderAccount.balance-goingToSpend.goingToSpendInNativeCurrency).toFixed(9))-0.000000002
 
-                    senderAccount.balance = Number((senderAccount.balance).toFixed(9))-0.000000001
 
                     let touchedAccounts = [tx.creator,tx.payload.to]
 
+                    let amountForRecipient = Number(tx.payload.amount.toFixed(9))
+
+
                     if(tx.payload.toEVMAccount){
 
-                        recipientAccount.balance += BigInt(tx.payload.amount) * (BigInt(10) ** BigInt(18))
+                        recipientAccount.balance += BigInt(amountForRecipient) * (BigInt(10) ** BigInt(18))
 
                         await KLY_EVM.updateAccount(tx.payload.toEVMAccount,recipientAccount)
                         
@@ -335,9 +338,7 @@ export let VERIFIERS = {
 
                     } else {
 
-                        recipientAccount.balance += tx.payload.amount
-
-                        recipientAccount.balance = Number((recipientAccount.balance).toFixed(9))-0.000000001
+                        recipientAccount.balance += amountForRecipient
 
                     }
     
@@ -432,9 +433,7 @@ export let VERIFIERS = {
                     atomicBatch.put(originShard+':'+contractID+'_STORAGE_DEFAULT',tx.payload.constructorParams.initStorage) // autocreate the default storage for contract
 
 
-                    senderAccount.balance -= goingToSpend.goingToSpendInNativeCurrency
-
-                    senderAccount.balance = Number((senderAccount.balance).toFixed(9))-0.000000001
+                    senderAccount.balance = Number((senderAccount.balance-goingToSpend.goingToSpendInNativeCurrency).toFixed(9))-0.000000001
 
 
                     senderAccount.gas -= goingToSpend.goingToBurnGasAmount
@@ -584,9 +583,7 @@ export let VERIFIERS = {
         
                     }
 
-                    senderAccount.balance -= goingToSpend.goingToSpendInNativeCurrency
-
-                    senderAccount.balance = Number((senderAccount.balance).toFixed(9))-0.000000001
+                    senderAccount.balance = Number((senderAccount.balance-goingToSpend.goingToSpendInNativeCurrency).toFixed(9))-0.000000001
 
                     senderAccount.gas -= goingToSpend.goingToBurnGasAmount
             
@@ -625,13 +622,13 @@ export let VERIFIERS = {
             let totalSpentInWei = evmResult.amountSpent // BigInt value
 
             let totalSpentByTxInKLY = web3.utils.fromWei(totalSpentInWei.toString(),'ether')
-
           
             // Add appropriate value to rewardbox to distribute among KLY pools
 
             totalSpentByTxInKLY = +totalSpentByTxInKLY
 
             rewardsAndSuccessfulTxsCollector.fees += totalSpentByTxInKLY
+
 
             let possibleReceipt = KLY_EVM.getTransactionWithReceiptToStore(
                 
@@ -673,11 +670,8 @@ export let VERIFIERS = {
 
                         // Transfer coins
 
-                        accountToTransfer.balance += totalSpentByTxInKLY
-
-                        accountToTransfer.balance = Number((accountToTransfer.balance).toFixed(9))-0.000000001
+                        accountToTransfer.balance = Number((accountToTransfer.balance + totalSpentByTxInKLY).toFixed(9))
                         
-
                         touchedAccounts.push(accountToTransfer)
 
                     }
