@@ -57,9 +57,11 @@ export let CONTRACT = {
 
         if(txCreatorAccount.type === 'eoa' && typeof moveToShard === 'string' && typeof recipient === 'string' && typeof recipientNextNonce === 'number' && typeof amount === 'number' && amount <= txCreatorAccount.balance){
 
+            amount = Number(amount.toFixed(9))
+
             txCreatorAccount.balance -= amount
 
-            txCreatorAccount.balance = (txCreatorAccount.balance.toFixed(9)-0.000000001)
+            txCreatorAccount.balance -= 0.000000001
 
 
             return {isOk:true, extraData:{moveToShard,recipient,recipientNextNonce,amount}}
@@ -146,9 +148,11 @@ export let CONTRACT = {
  
             if(verifyQuorumMajoritySolution(dataThatShouldBeSigned,quorumAgreements)){
 
+                amount = Number(amount.toFixed(9))
+
                 txCreatorAccount.balance += amount
 
-                txCreatorAccount.balance = (txCreatorAccount.balance.toFixed(9)-0.000000001)
+                txCreatorAccount.balance -= 0.000000001
 
                 return {isOk:true}
 

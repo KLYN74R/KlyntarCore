@@ -1410,7 +1410,7 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
 
     if(mainStorageOfBlockCreator.percentage !== 0){
 
-        rewardForBlockCreator = mainStorageOfBlockCreator.percentage * totalFees
+        rewardForBlockCreator = Number((mainStorageOfBlockCreator.percentage * totalFees).toFixed(9))-0.000000001
 
         if(!mainStorageOfBlockCreator.stakers[blockCreatorPubKey]) mainStorageOfBlockCreator.stakers[blockCreatorPubKey] = {kly:0,uno:0,reward:0}
 
@@ -1435,7 +1435,7 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
 
         let stakerAccountForReward = mainStorageOfBlockCreator.stakers[stakerPubKey]
 
-        stakerAccountForReward.reward += totalStakerPowerPercent * feesToDistributeAmongStakers
+        stakerAccountForReward.reward += Number((totalStakerPowerPercent * feesToDistributeAmongStakers).toFixed(9))-0.000000001
 
     }
 

@@ -175,9 +175,11 @@ export let CONTRACT = {
 
                         if(recipientAccount && (rwxContractRelatedToDeal.balance - subTx.amount) >= 0){                          
 
+                            subTx.amount = Number(subTx.amount.toFixed(9))
+
                             recipientAccount.balance += subTx.amount
 
-                            recipientAccount.balance = Number((recipientAccount.balance).toFixed(9))-0.000000001
+                            recipientAccount.balance -= 0.000000001
 
                             rwxContractRelatedToDeal.balance -= subTx.amount
 

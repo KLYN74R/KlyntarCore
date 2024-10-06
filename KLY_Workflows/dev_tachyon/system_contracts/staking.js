@@ -44,17 +44,21 @@ export let CONTRACT = {
             
             if(units === 'kly' && amount <= txCreatorAccount.balance){
 
+                amount = Number(amount.toFixed(9))
+
                 txCreatorAccount.balance -= amount
 
-                txCreatorAccount.balance = Number((txCreatorAccount.balance).toFixed(9))-0.000000001
+                txCreatorAccount.balance -= 0.000000001
 
             } 
 
             else if (units === 'uno' && amount <= txCreatorAccount.uno){
 
+                amount = Number(amount.toFixed(9))
+
                 txCreatorAccount.uno -= amount
 
-                txCreatorAccount.uno = Number((txCreatorAccount.uno).toFixed(9))-0.000000001
+                txCreatorAccount.uno -= 0.000000001
 
             } 
 
