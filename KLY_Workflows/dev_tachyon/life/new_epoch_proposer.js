@@ -22,7 +22,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
     let epochFullID = atEpochHandler.hash+"#"+atEpochHandler.id
 
     let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
-
+    
 
     if(!currentEpochMetadata){
 
@@ -346,10 +346,8 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
                                 // Verify EPOCH_FINALIZATION_PROOF signature and store to mapping
 
                                 let dataThatShouldBeSigned = 'EPOCH_DONE'+shardID+metadata.currentLeader+metadata.lastBlockProposition.index+metadata.lastBlockProposition.hash+metadata.afpForFirstBlock.blockHash+epochFullID
-
-                                let isOk = await verifyEd25519(dataThatShouldBeSigned,response.sig,descriptor.pubKey)
-
-                                if(isOk) agreementsForThisShard.set(descriptor.pubKey,response.sig)
+                                
+                                if(await verifyEd25519(dataThatShouldBeSigned,response.sig,descriptor.pubKey)) agreementsForThisShard.set(descriptor.pubKey,response.sig)
 
 
                             }else if(response.status==='UPGRADE'){
@@ -418,11 +416,11 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
                     proofs:Object.fromEntries(agreementsForEpochManager)
                     
-                }
+                }                
 
                 // Make final verification
 
-                if(await verifyAggregatedEpochFinalizationProof(aggregatedEpochFinalizationProof,quorumMembers,majority,epochFullID)){
+                if(await verifyAggregatedEpochFinalizationProof(aggregatedEpochFinalizationProof,atEpochHandler.quorum,majority,epochFullID)){
 
                     await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`AEFP:${atEpochHandler.id}:${shardID}`,aggregatedEpochFinalizationProof).catch(()=>{})
 
