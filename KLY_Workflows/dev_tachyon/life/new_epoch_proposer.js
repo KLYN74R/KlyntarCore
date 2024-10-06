@@ -2,7 +2,7 @@ import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../
 
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
-import {verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
+import {verifyAggregatedEpochFinalizationProof, verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
 
 import {useTemporaryDb} from '../common_functions/approvement_thread_related.js'
 
@@ -403,7 +403,6 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
             let agreementsForEpochManager = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION').get(shardID) // signer => signature
 
             if(agreementsForEpochManager.size >= majority){
-
         
                 let aggregatedEpochFinalizationProof = {
 
@@ -421,7 +420,17 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
                     
                 }
 
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`AEFP:${atEpochHandler.id}:${shardID}`,aggregatedEpochFinalizationProof).catch(()=>{})
+                // Make final verification
+
+                if(await verifyAggregatedEpochFinalizationProof(aggregatedEpochFinalizationProof,quorumMembers,majority,epochFullID)){
+
+                    await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`AEFP:${atEpochHandler.id}:${shardID}`,aggregatedEpochFinalizationProof).catch(()=>{})
+
+                } else {
+
+                    agreementsForEpochManager.clear()
+
+                }
 
             }
 
