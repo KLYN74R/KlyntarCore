@@ -263,6 +263,7 @@ export let VERIFIERS = {
 
     }
 
+    touchedAccounts:[acc0, acc1, acc2, ... , accN]
 
     
     */
@@ -553,9 +554,9 @@ export let VERIFIERS = {
 
                             // In case contract call have zk verificaiton requirement - verify it because since it's async - impossible to do it from contract
 
-                            if(paramsToPass.zkVerifyRequest){
+                            if(tx.payload.zkVerifyRequest){
 
-                                let {protoName,publicInputs,proof} = paramsToPass.zkVerifyRequest
+                                let {protoName,publicInputs,proof} = tx.payload.zkVerifyRequest
 
                                 // Extract vKey from contract storage
 

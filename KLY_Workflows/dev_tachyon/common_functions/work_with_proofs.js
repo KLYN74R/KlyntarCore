@@ -4,7 +4,11 @@ import {getQuorumMajority, getQuorumUrlsAndPubkeys} from './quorum_related.js'
 
 import {verifyEd25519Sync} from '../../../KLY_Utils/utils.js'
 
+import {getAllKnownPeers} from '../utils.js'
+
 import Block from '../structures/block.js'
+
+
 
 
 
@@ -202,6 +206,12 @@ export let getFirstBlockOnEpochOnSpecificShard = async(epochHandler,shardID,getB
     if(!pivotShardData){
 
         let arrayOfPoolsForShard = epochHandler.leadersSequence[shardID]
+
+        // Get all known peers and call GET /first_block_assumption/:epoch_index/:shard
+
+        let allKnownNodes = [...getAllKnownPeers(),...await getQuorumUrlsAndPubkeys()]
+
+        let promises = []
         
         for(let position = 0, length = arrayOfPoolsForShard.length ; position < length ; position++){
 
