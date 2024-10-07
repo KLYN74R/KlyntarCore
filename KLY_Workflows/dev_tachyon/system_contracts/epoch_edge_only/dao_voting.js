@@ -1,8 +1,8 @@
 /* eslint-disable no-unused-vars */
 
-import {verifyQuorumMajoritySolution} from "../common_functions/work_with_proofs.js"
+import {verifyQuorumMajoritySolution} from "../../common_functions/work_with_proofs.js"
 
-import {WORKING_THREADS} from "../blockchain_preparation.js"
+import {WORKING_THREADS} from "../../blockchain_preparation.js"
 
 import Web3 from 'web3'
 
