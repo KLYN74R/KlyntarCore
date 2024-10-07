@@ -205,13 +205,29 @@ export let getFirstBlockOnEpochOnSpecificShard = async(epochHandler,shardID,getB
 
     if(!pivotShardData){
 
+        // Ask known peers about first block assumption
+
         let arrayOfPoolsForShard = epochHandler.leadersSequence[shardID]
 
         // Get all known peers and call GET /first_block_assumption/:epoch_index/:shard
 
-        let allKnownNodes = [...getAllKnownPeers(),...await getQuorumUrlsAndPubkeys()]
+        let allKnownNodes = [...await getQuorumUrlsAndPubkeys(false,epochHandler),...getAllKnownPeers()]
 
         let promises = []
+
+
+        for(let node of allKnownNodes){
+
+            const controller = new AbortController()
+
+            setTimeout(() => controller.abort(), 2000)
+            
+            promises.push(fetch(node+'/first_block_assumption/'+epochHandler.id+'/'+shardID,{signal:controller.signal}).then(r=>r.json()).catch(()=>null))
+
+        }
+
+        // let minimalIndexOfLeader
+        
         
         for(let position = 0, length = arrayOfPoolsForShard.length ; position < length ; position++){
 

@@ -168,8 +168,11 @@ class VmState {
 
         let evmExecutionContext = this.isSandboxExecution ? global.KLY_EVM_OPTIONS.bindContext : this.evmContext
 
+        let accountInTouchedList = this.touchedAccounts ? this.touchedAccounts.includes(`0x${addressAsStringWithout0x}`) : true
 
-        if(bindedToShard !== evmExecutionContext && addressAsStringWithout0x !== global.KLY_EVM_OPTIONS.coinbase && addressAsStringWithout0x !== global.KLY_EVM_OPTIONS.connectorAddress){
+        let notSpecialAccount = addressAsStringWithout0x !== global.KLY_EVM_OPTIONS.coinbase && addressAsStringWithout0x !== global.KLY_EVM_OPTIONS.connectorAddress
+
+        if(bindedToShard !== evmExecutionContext && notSpecialAccount || !accountInTouchedList){
 
             throw new Error(`Account 0x${addressAsStringWithout0x} binded to shard ${bindedToShard}, but you try to change the state of it via tx on shard ${evmExecutionContext}`)
 
