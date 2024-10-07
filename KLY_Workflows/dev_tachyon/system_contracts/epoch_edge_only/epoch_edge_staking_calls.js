@@ -1,12 +1,12 @@
 /* eslint-disable no-unused-vars */
 
-import {BLOCKCHAIN_DATABASES,GLOBAL_CACHES,WORKING_THREADS} from '../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES,GLOBAL_CACHES,WORKING_THREADS} from '../../blockchain_preparation.js'
 
-import {getFromApprovementThreadState} from '../common_functions/approvement_thread_related.js'
+import {getFromApprovementThreadState} from '../../common_functions/approvement_thread_related.js'
 
-import {verifyQuorumMajoritySolution} from '../common_functions/work_with_proofs.js'
+import {verifyQuorumMajoritySolution} from '../../common_functions/work_with_proofs.js'
 
-import {getFromState} from '../common_functions/state_interactions.js'
+import {getFromState} from '../../common_functions/state_interactions.js'
 
 
 

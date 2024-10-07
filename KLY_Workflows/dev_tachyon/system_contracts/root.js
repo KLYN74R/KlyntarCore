@@ -10,13 +10,13 @@ let epochEdgeSystemContracts = ['dao_voting','epoch_edge_staking_calls']
 
 for(let name of systemContractsNames){
 
-    await import(`./${name}.js`).then(contractHandler=>SYSTEM_CONTRACTS.set(name,contractHandler.CONTRACT))
+    await import(`./default/${name}.js`).then(contractHandler=>SYSTEM_CONTRACTS.set(name,contractHandler.CONTRACT))
 
 }
 
 
 for(let name of epochEdgeSystemContracts){
 
-    await import(`./${name}.js`).then(contractHandler=>EPOCH_EDGE_SYSTEM_CONTRACTS.set(name,contractHandler.CONTRACT))
+    await import(`./epoch_edge_only/${name}.js`).then(contractHandler=>EPOCH_EDGE_SYSTEM_CONTRACTS.set(name,contractHandler.CONTRACT))
 
 }
