@@ -219,7 +219,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
         let majority = getQuorumMajority(currentEpochHandler)
 
-        let allKnownPeers = await getQuorumUrlsAndPubkeys()
+        let quorumNodesUrls = await getQuorumUrlsAndPubkeys()
 
 
 
@@ -290,9 +290,9 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                 }else{
 
                     // Ask quorum for AEFP
-                    for(let peerURL of allKnownPeers){
+                    for(let quorumMemberUrl of quorumNodesUrls){
             
-                        let itsProbablyAggregatedEpochFinalizationProof = await fetch(peerURL+`/aggregated_epoch_finalization_proof/${currentEpochHandler.id}/${shardID}`).then(r=>r.json()).catch(()=>false)
+                        let itsProbablyAggregatedEpochFinalizationProof = await fetch(quorumMemberUrl+`/aggregated_epoch_finalization_proof/${currentEpochHandler.id}/${shardID}`).then(r=>r.json()).catch(()=>false)
                 
                         if(itsProbablyAggregatedEpochFinalizationProof){
                 

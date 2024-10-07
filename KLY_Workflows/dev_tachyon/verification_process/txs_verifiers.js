@@ -263,6 +263,7 @@ export let VERIFIERS = {
 
     }
 
+    touchedAccounts:[acc0, acc1, acc2, ... , accN]
 
     
     */
@@ -276,9 +277,18 @@ export let VERIFIERS = {
         
         tx = await TXS_FILTERS.TX(tx,originShard) // pass through the filter
 
-        if(senderAccount.nonce > tx.nonce) return {isOk:false,reason:'Replay'}
 
         if(tx && tx.fee >= 0 && senderAccount.type==='eoa'){
+
+            if(senderAccount.nonce > tx.nonce) return {isOk:false,reason:'Replay: You need to increase the nonce'}
+
+            if(Array.isArray(tx.payload.touchedAccounts)){
+
+                let includesAll = tx.payload.touchedAccounts.includes(tx.creator) && tx.payload.touchedAccounts.includes(tx.payload.to)
+
+                if(!includesAll) return {isOk:false,reason:'Wrong accounts in .touchedAccounts'}
+
+            }
 
             if(tx.payload.toEVMAccount){
 
@@ -399,12 +409,18 @@ export let VERIFIERS = {
 
         let senderAccount = await getUserAccountFromState(originShard+':'+tx.creator)
 
-
         tx = await TXS_FILTERS.WVM_CONTRACT_DEPLOY(tx,originShard) // pass through the filter
 
-        if(senderAccount.nonce > tx.nonce) return {isOk:false,reason:'Replay'}
 
         if(tx && tx.fee >= 0 && senderAccount.type==='eoa'){
+
+            if(senderAccount.nonce > tx.nonce) return {isOk:false,reason:'Replay: You need to increase the nonce'}
+
+            if(Array.isArray(tx.payload.touchedAccounts) && tx.payload.touchedAccounts.includes(tx.creator)){
+
+                if(!tx.payload.touchedAccounts.includes(tx.creator)) return {isOk:false,reason:'Wrong accounts in .touchedAccounts'}
+
+            }
 
             let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
 
@@ -477,13 +493,22 @@ export let VERIFIERS = {
 
         let senderAccount = await getUserAccountFromState(originShard+':'+tx.creator)
 
-
         tx = await TXS_FILTERS.WVM_CALL(tx,originShard) // pass through the filter
-
-        if(senderAccount.nonce > tx.nonce) return {isOk:false,reason:'Replay'}
+       
 
         if(tx && tx.fee >= 0 && senderAccount.type==='eoa'){
 
+            if(senderAccount.nonce > tx.nonce) return {isOk:false,reason:'Replay: You need to increase the nonce'}
+
+            if(Array.isArray(tx.payload.touchedAccounts)){
+
+                let includesAll = tx.payload.touchedAccounts.includes(tx.creator) && tx.payload.touchedAccounts.includes(tx.payload.contractID) && tx.payload.touchedAccounts.includes(tx.payload.to)
+
+                if(!includesAll) return {isOk:false,reason:'Wrong accounts in .touchedAccounts'}
+
+            }
+
+            
             let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
 
             if(!goingToSpend.errReason){
@@ -553,9 +578,9 @@ export let VERIFIERS = {
 
                             // In case contract call have zk verificaiton requirement - verify it because since it's async - impossible to do it from contract
 
-                            if(paramsToPass.zkVerifyRequest){
+                            if(tx.payload.zkVerifyRequest){
 
-                                let {protoName,publicInputs,proof} = paramsToPass.zkVerifyRequest
+                                let {protoName,publicInputs,proof} = tx.payload.zkVerifyRequest
 
                                 // Extract vKey from contract storage
 
