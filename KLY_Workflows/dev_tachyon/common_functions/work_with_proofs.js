@@ -263,9 +263,9 @@ export let getFirstBlockOnEpochOnSpecificShard = async(epochHandler,shardID,getB
         
         let firstBlockByPivot = await getBlockFunction(epochHandler.id,pivotPubKey,0)
 
-        let firstBlockHash = afpForSecondBlock.prevBlockHash
+        let firstBlockHash = afpForSecondBlock?.prevBlockHash
 
-
+        
         if(firstBlockByPivot && firstBlockHash === Block.genHash(firstBlockByPivot)){
 
             // Once we find it - set as pivot for further actions
