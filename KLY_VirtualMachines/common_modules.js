@@ -237,7 +237,7 @@ export let transferNativeCoins = function(amount) {
 
     if(this.contractAccount.balance - amount >= 0){
 
-        this.contractAccount.balance = Number((this.contractAccount.balance-amount).toFixed(9))-0.000000001
+        this.contractAccount.balance = Number((this.contractAccount.balance-amount).toFixed(9))
 
         this.recipientAccount.balance = Number((this.recipientAccount.balance+amount).toFixed(9))-0.000000001
 
