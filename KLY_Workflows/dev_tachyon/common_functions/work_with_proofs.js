@@ -201,9 +201,9 @@ export let getFirstBlockOnEpochOnSpecificShard = async(epochHandler,shardID,getB
 
     // Check if we already tried to find first block by finding pivot in cache
 
-    let pivotShardID = `${epochHandler.id}:${shardID}`
+    let idOfHandlerWithFirstBlockPerShard = `${epochHandler.id}:${shardID}`
 
-    let pivotShardData = GLOBAL_CACHES.STUFF_CACHE.get(pivotShardID) // {position,pivotPubKey,firstBlockByPivot,firstBlockHash}
+    let pivotShardData = GLOBAL_CACHES.STUFF_CACHE.get(idOfHandlerWithFirstBlockPerShard) // {position,pivotPubKey,firstBlockByPivot,firstBlockHash}
 
     if(!pivotShardData){
 
@@ -272,14 +272,14 @@ export let getFirstBlockOnEpochOnSpecificShard = async(epochHandler,shardID,getB
 
             let pivotTemplate = {position, pivotPubKey, firstBlockByPivot, firstBlockHash}
 
-            GLOBAL_CACHES.STUFF_CACHE.set(pivotShardID,pivotTemplate)
+            GLOBAL_CACHES.STUFF_CACHE.set(idOfHandlerWithFirstBlockPerShard,pivotTemplate)
 
         }
 
     }
 
     
-    pivotShardData = GLOBAL_CACHES.STUFF_CACHE.get(pivotShardID)
+    pivotShardData = GLOBAL_CACHES.STUFF_CACHE.get(idOfHandlerWithFirstBlockPerShard)
 
 
     if(pivotShardData){
@@ -297,7 +297,7 @@ export let getFirstBlockOnEpochOnSpecificShard = async(epochHandler,shardID,getB
 
         if(pivotShardData.position === 0){
 
-            GLOBAL_CACHES.STUFF_CACHE.delete(pivotShardID)
+            GLOBAL_CACHES.STUFF_CACHE.delete(idOfHandlerWithFirstBlockPerShard)
 
             return {firstBlockCreator:pivotShardData.pivotPubKey,firstBlockHash:pivotShardData.firstBlockHash}
 
@@ -314,7 +314,7 @@ export let getFirstBlockOnEpochOnSpecificShard = async(epochHandler,shardID,getB
 
             if(position === 0){
 
-                GLOBAL_CACHES.STUFF_CACHE.delete(pivotShardID)
+                GLOBAL_CACHES.STUFF_CACHE.delete(idOfHandlerWithFirstBlockPerShard)
 
                 if(leaderRotationProofForPreviousPool.skipIndex === -1){
 
@@ -343,7 +343,7 @@ export let getFirstBlockOnEpochOnSpecificShard = async(epochHandler,shardID,getB
     
                     }
 
-                    GLOBAL_CACHES.STUFF_CACHE.set(pivotShardID,newPivotTemplate)
+                    GLOBAL_CACHES.STUFF_CACHE.set(idOfHandlerWithFirstBlockPerShard,newPivotTemplate)
 
                     break
 
