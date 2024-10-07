@@ -230,6 +230,8 @@ export let getFirstBlockOnEpochOnSpecificShard = async(epochHandler,shardID,getB
 
         let minimalIndexOfLeader = 100000000000000
 
+        let afpForSecondBlock
+
         let propositions = await Promise.all(promises).then(responses=>responses.filter(Boolean)) // array where each element is {indexOfFirstBlockCreator, afpForSecondBlock}
         
 
@@ -239,11 +241,13 @@ export let getFirstBlockOnEpochOnSpecificShard = async(epochHandler,shardID,getB
 
             if(firstBlockCreator && await verifyAggregatedFinalizationProof(proposition.afpForSecondBlock,epochHandler)){
 
-                let firstBlockIdThatShouldBeInAfp = `${epochHandler.id}:${firstBlockCreator}:0`
+                let secondBlockIdThatShouldBeInAfp = `${epochHandler.id}:${firstBlockCreator}:1`
 
-                if(firstBlockIdThatShouldBeInAfp === proposition.afpForSecondBlock.blockID && proposition.indexOfFirstBlockCreator < minimalIndexOfLeader){
+                if(secondBlockIdThatShouldBeInAfp === proposition.afpForSecondBlock.blockID && proposition.indexOfFirstBlockCreator < minimalIndexOfLeader){
 
                     minimalIndexOfLeader = proposition.indexOfFirstBlockCreator
+
+                    afpForSecondBlock = proposition.afpForSecondBlock
 
                 }
 
@@ -251,43 +255,25 @@ export let getFirstBlockOnEpochOnSpecificShard = async(epochHandler,shardID,getB
 
         }
 
-        // 
+        // Now get the assumption of first block(block itself), compare hashes and build the pivot to find the real first block
+
+        let position = minimalIndexOfLeader
+
+        let pivotPubKey = arrayOfPoolsForShard[position]
         
-        for(let position = 0, length = arrayOfPoolsForShard.length ; position < length ; position++){
+        let firstBlockByPivot = await getBlockFunction(epochHandler.id,pivotPubKey,0)
 
-            let potentialPivotPubKey = arrayOfPoolsForShard[position]
-
-            let firstBlockIDByThisPubKey = epochHandler.id+':'+potentialPivotPubKey+':0'
-
-            // Try to get AFP & first block to commit pivot and continue to find first block
-
-            let afp = await getVerifiedAggregatedFinalizationProofByBlockId(firstBlockIDByThisPubKey,epochHandler)
-
-            let potentialFirstBlock = await getBlockFunction(epochHandler.id,potentialPivotPubKey,0)
+        let firstBlockHash = afpForSecondBlock.prevBlockHash
 
 
-            if(afp && afp.blockID === firstBlockIDByThisPubKey && potentialFirstBlock && afp.blockHash === Block.genHash(potentialFirstBlock)){
+        if(firstBlockByPivot && firstBlockHash === Block.genHash(firstBlockByPivot)){
 
-                // Once we find it - set as pivot for further actions
+            // Once we find it - set as pivot for further actions
 
-                let pivotTemplate = {
+            let pivotTemplate = {position, pivotPubKey, firstBlockByPivot, firstBlockHash}
 
-                    position,
+            GLOBAL_CACHES.STUFF_CACHE.set(idOfHandlerWithFirstBlockPerShard,pivotTemplate)
 
-                    pivotPubKey:potentialPivotPubKey,
-                    
-                    firstBlockByPivot:potentialFirstBlock,
-
-                    firstBlockHash:afp.blockHash
-
-                }
-
-                GLOBAL_CACHES.STUFF_CACHE.set(idOfHandlerWithFirstBlockPerShard,pivotTemplate)
-
-                break
-
-            }
-        
         }
 
     }
