@@ -195,6 +195,8 @@ export let getVerifiedAggregatedFinalizationProofByBlockId = async (blockID,epoc
 }
 
 
+
+
 export let getFirstBlockOnEpochOnSpecificShard = async(epochHandler,shardID,getBlockFunction) => {
 
     // Check if we already tried to find first block by finding pivot in cache
@@ -226,8 +228,30 @@ export let getFirstBlockOnEpochOnSpecificShard = async(epochHandler,shardID,getB
 
         }
 
-        // let minimalIndexOfLeader
+        let minimalIndexOfLeader = 100000000000000
+
+        let propositions = await Promise.all(promises).then(responses=>responses.filter(Boolean)) // array where each element is {indexOfFirstBlockCreator, afpForSecondBlock}
         
+
+        for(let proposition of propositions){
+
+            let firstBlockCreator = arrayOfPoolsForShard[proposition.indexOfFirstBlockCreator]
+
+            if(firstBlockCreator && await verifyAggregatedFinalizationProof(proposition.afpForSecondBlock,epochHandler)){
+
+                let firstBlockIdThatShouldBeInAfp = `${epochHandler.id}:${firstBlockCreator}:0`
+
+                if(firstBlockIdThatShouldBeInAfp === proposition.afpForSecondBlock.blockID && proposition.indexOfFirstBlockCreator < minimalIndexOfLeader){
+
+                    minimalIndexOfLeader = proposition.indexOfFirstBlockCreator
+
+                }
+
+            }
+
+        }
+
+        // 
         
         for(let position = 0, length = arrayOfPoolsForShard.length ; position < length ; position++){
 
