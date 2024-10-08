@@ -158,10 +158,7 @@ class KLY_EVM_CLASS {
 
             // To prevent spam - set limit in configs for your RPC. This will protect your node from executing "intensive" logic
 
-            let gasLimitFromConfigsToPreventDdos = BigInt(maxAllowedGasAmountForSandboxExecution)
-
-            let gasLimit = gasLimit >= gasLimitFromConfigsToPreventDdos ? gasLimitFromConfigsToPreventDdos : gasLimit
-
+            let gasLimit = BigInt(maxAllowedGasAmountForSandboxExecution)
 
             let txResult = await vmCopy.evm.runCall({
 
