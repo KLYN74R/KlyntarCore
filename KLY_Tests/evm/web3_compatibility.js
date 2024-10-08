@@ -112,7 +112,7 @@ let EVM_DEFAULT_TX = async() => {
         gasPrice: web3.utils.toHex(web3.utils.toWei('10','gwei')),
     
         //Set payload in hex
-        data: `0x${Buffer.from('💡 KLYNTAR -> 4e34d2a0b21c54a10a40c8d99187f8dcecebff501f9a15e09230f18ff2ac4808').toString('hex')}`
+        // data: `0x${Buffer.from('💡 KLYNTAR -> 4e34d2a0b21c54a10a40c8d99187f8dcecebff501f9a15e09230f18ff2ac4808').toString('hex')}`
     
     }
 

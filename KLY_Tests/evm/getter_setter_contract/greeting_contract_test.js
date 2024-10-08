@@ -19,10 +19,10 @@ import Web3 from 'web3'
 //___________________________________ CONSTANTS POOL ___________________________________
 
 
-const web3 = new Web3('http://localhost:7331/kly_evm_rpc')
+const web3 = new Web3('http://localhost:7332/kly_evm_rpc/shard_0')
 
 // KLY-EVM
-const common = Common.custom({name:'KLYNTAR',networkId:7331,chainId:7331},'merge')
+const common = Common.custom({name:'KLYNTAR',networkId:'0x1CA3',chainId:'0x1CA3'},{hardfork:'london'})
 
 // EVM account
 
@@ -78,7 +78,7 @@ let DEPLOY_CONTRACT=async()=>{
 
         let raw = '0x' + tx.serialize().toString('hex')
 
-        // console.log('Transaction(HEX) ———> ',raw)
+        console.log('Transaction(HEX) ———> ',raw)
 
         //Broadcast the transaction
         web3.eth.sendSignedTransaction(raw, (err, txHash) => console.log(err?`Oops,some has been occured ${err}`:`Success ———> ${txHash}`))
@@ -121,7 +121,7 @@ let SET_GREETING=async()=>{
 
             from:evmAccount0.address,
 
-            to:'0x49Fb5FccD2f0Cf7764B4A469669C2d400006d203', // our contract address
+            to:'0x49fb5fccd2f0cf7764b4a469669c2d400006d203', // our contract address
 
             nonce:web3.utils.toHex(txCount),
     
@@ -158,7 +158,7 @@ let SET_GREETING=async()=>{
 
 let GET_GREETING=async()=>{
 
-    let contractAddress = '0x400F246244d67F1654B7939C330a46e4bd9e4186'
+    let contractAddress = '0x49fb5fccd2f0cf7764b4a469669c2d400006d203'
 
     let GREET_CONTRACT = new web3.eth.Contract([{"inputs":[{"internalType":"string","name":"_greeting","type":"string"}],"stateMutability":"nonpayable","type":"constructor"},{"inputs":[],"name":"greet","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"_greeting","type":"string"}],"name":"setGreeting","outputs":[],"stateMutability":"nonpayable","type":"function"}],contractAddress);
 
@@ -167,7 +167,7 @@ let GET_GREETING=async()=>{
 }
 
 
-// GET_GREETING()
+GET_GREETING()
 
 
 let SET_GREETING_IN_SANDBOX=async()=>{

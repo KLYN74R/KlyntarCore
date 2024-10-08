@@ -48,6 +48,7 @@
   "devDependencies": {
     "@ethereumjs/common": "^3.0.0",
     "@ethereumjs/tx": "^4.0.0",
+    "@ethersproject/abi": "^5.7.0",
     "@solana/web3.js": "^1.87.6",
     "eslint": "^8.56.0",
     "ethereumjs-common": "^1.5.2",
