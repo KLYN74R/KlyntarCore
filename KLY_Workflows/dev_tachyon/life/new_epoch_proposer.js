@@ -290,7 +290,13 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
 
         //Descriptor is {url,pubKey}
-        for(let descriptor of quorumMembers){        
+        for(let descriptor of quorumMembers){      
+            
+            const controller = new AbortController()
+
+            setTimeout(() => controller.abort(), 2000)
+
+            optionsToSend.signal = controller.signal
 
             await fetch(descriptor.url+'/epoch_proposition',optionsToSend).then(r=>r.json()).then(async possibleAgreements => {
 

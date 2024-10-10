@@ -291,9 +291,18 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                     // Ask quorum for AEFP
                     for(let quorumMemberUrl of quorumNodesUrls){
+
+                        const controller = new AbortController()
+
+                        setTimeout(() => controller.abort(), 2000)
             
-                        let itsProbablyAggregatedEpochFinalizationProof = await fetch(quorumMemberUrl+`/aggregated_epoch_finalization_proof/${currentEpochHandler.id}/${shardID}`).then(r=>r.json()).catch(()=>false)
+                        let itsProbablyAggregatedEpochFinalizationProof = await fetch(
+                            
+                            quorumMemberUrl+`/aggregated_epoch_finalization_proof/${currentEpochHandler.id}/${shardID}`,{signal:controller.signal}
+                        
+                        ).then(r=>r.json()).catch(()=>false)
                 
+                        
                         if(itsProbablyAggregatedEpochFinalizationProof){
                 
                             let aefpPureObject = await verifyAggregatedEpochFinalizationProof(itsProbablyAggregatedEpochFinalizationProof,currentEpochHandler.quorum,majority,currentEpochFullID)
