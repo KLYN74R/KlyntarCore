@@ -60,10 +60,17 @@ export let runBlockchain=async()=>{
 
     
 
-    //Check if bootstrap nodes is alive
-    CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES.forEach(endpoint=>
-                
+    // Check if bootstrap nodes are alive
+
+    for(let endpoint of CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES){
+
+        const controller = new AbortController()
+
+        setTimeout(() => controller.abort(), 2000)
+
         fetch(endpoint+'/addpeer',{
+
+            signal: controller.signal,
             
             method:'POST',
             
@@ -79,6 +86,7 @@ export let runBlockchain=async()=>{
             
             .catch(error=>customLog(`Bootstrap node \x1b[32;1m${endpoint}\x1b[31;1m send no response or some error occured \n${error}`,logColors.RED))
 
-    )
+
+    }
 
 }

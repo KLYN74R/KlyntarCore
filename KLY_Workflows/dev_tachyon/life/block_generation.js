@@ -224,9 +224,13 @@ let getAggregatedEpochFinalizationProofForPreviousEpoch = async shardID => {
 
         for(let nodeEndpoint of allKnownNodes){
 
+            const controller = new AbortController()
+
+            setTimeout(() => controller.abort(), 2000)
+
             let finalURL = `${nodeEndpoint}/aggregated_epoch_finalization_proof/${WORKING_THREADS.GENERATION_THREAD.epochIndex}/${shardID}`
     
-            let itsProbablyAggregatedEpochFinalizationProof = await fetch(finalURL).then(r=>r.json()).catch(()=>false)
+            let itsProbablyAggregatedEpochFinalizationProof = await fetch(finalURL,{signal:controller.signal}).then(r=>r.json()).catch(()=>false)
     
             let aefpProof = itsProbablyAggregatedEpochFinalizationProof?.shard === shardID && await verifyAggregatedEpochFinalizationProof(
                 

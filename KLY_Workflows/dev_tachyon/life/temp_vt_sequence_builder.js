@@ -83,13 +83,20 @@ export let findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards=async()=>{
 
     // Make request to /data_to_build_temp_data_for_verification_thread
 
+    const controller = new AbortController()
+
+    setTimeout(() => controller.abort(), 7000)
+
     let optionsToSend = {
 
         method: 'POST',
 
-        body: JSON.stringify(localVersionOfCurrentLeaders)
+        body: JSON.stringify(localVersionOfCurrentLeaders),
+
+        signal: controller.signal
 
     }
+
 
     let response = await fetch(randomTarget.url+'/data_to_build_temp_data_for_verification_thread',optionsToSend).then(r=>r.json()).catch(()=>({}))
 

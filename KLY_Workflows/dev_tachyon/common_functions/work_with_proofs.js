@@ -172,7 +172,11 @@ export let getVerifiedAggregatedFinalizationProofByBlockId = async (blockID,epoc
 
         for(let endpoint of setOfUrls){
 
-            let itsProbablyAggregatedFinalizationProof = await fetch(endpoint+'/aggregated_finalization_proof/'+blockID).then(r=>r.json()).catch(()=>null)
+            const controller = new AbortController()
+
+            setTimeout(() => controller.abort(), 2000)
+
+            let itsProbablyAggregatedFinalizationProof = await fetch(endpoint+'/aggregated_finalization_proof/'+blockID,{signal:controller.signal}).then(r=>r.json()).catch(()=>null)
 
             if(itsProbablyAggregatedFinalizationProof){
 
