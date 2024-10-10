@@ -54,6 +54,7 @@
     "eslint": "^8.56.0",
     "ethereumjs-common": "^1.5.2",
     "ethereumjs-tx": "^2.1.2",
+    "mathjs": "^13.2.0",
     "random-bytes": "^1.0.0",
     "web3": "^1.8.0"
   }
