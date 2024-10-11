@@ -646,11 +646,9 @@ export let VERIFIERS = {
           
             let totalSpentInWei = evmResult.amountSpent // BigInt value
 
-            let totalSpentByTxInKLY = web3.utils.fromWei(totalSpentInWei.toString(),'ether')
+            let totalSpentByTxInKLY = Number(web3.utils.fromWei(totalSpentInWei.toString(),'ether'))
           
             // Add appropriate value to rewardbox to distribute among KLY pools
-
-            totalSpentByTxInKLY = +totalSpentByTxInKLY
 
             rewardsAndSuccessfulTxsCollector.fees += totalSpentByTxInKLY
 
@@ -671,8 +669,8 @@ export let VERIFIERS = {
 
                 atomicBatch.put('TX:'+tx.hash,{tx,receipt,originShard})
 
-                let payedFee = Number(tx.gasLimit * tx.gasPrice)
-
+                let propsedFee = Number(web3.utils.fromWei((tx.gasLimit * tx.gasPrice).toString(),'ether'))
+                                
                 let touchedAccounts = [tx.from, tx.to]
 
                 if(receipt.contractAddress){
@@ -703,7 +701,7 @@ export let VERIFIERS = {
 
                 }
 
-                trackTransactionsList(originShard,tx.hash,'EVM_CALL','ECDSA',payedFee,touchedAccounts)
+                trackTransactionsList(originShard,tx.hash,'EVM_CALL','ECDSA',propsedFee,touchedAccounts)
 
                 return {isOk:true,reason:'EVM'}
 
