@@ -19,11 +19,11 @@ export default class Block{
 
         this.transactions = transactionsSet // array of transactions,contract calls, services logic,etc.
 
-        this.extraData = extraData || {} // extradata to be added to block. Used mostly to add <leaderRotationProofs>
+        this.extraData = extraData || {} // extradata to be added to block. Used mostly to add ALRPs(aggregated leader rotation proofs)
 
-        this.index = WORKING_THREADS.GENERATION_THREAD.nextIndex // index of block in validator's thread
+        this.index = WORKING_THREADS.GENERATION_THREAD.nextIndex // index of block in pool's own sequence
         
-        this.prevHash = WORKING_THREADS.GENERATION_THREAD.prevHash // hash of previous block in validator's thread
+        this.prevHash = WORKING_THREADS.GENERATION_THREAD.prevHash // hash of previous block in pool's own sequence
         
         this.sig = '' // Ed25519 signature of block
     
