@@ -1,10 +1,12 @@
+import {getFromApprovementThreadState} from './common_functions/approvement_thread_related.js'
+
 import {getCurrentEpochQuorum, getQuorumMajority} from './common_functions/quorum_related.js'
+
+import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../klyn74r.js'
 
 import {setLeadersSequenceForShards} from './life/shards_leaders_monitoring.js'
 
 import {customLog, pathResolve, logColors} from '../../KLY_Utils/utils.js'
-
-import {BLOCKCHAIN_GENESIS, FASTIFY_SERVER} from '../../klyn74r.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
@@ -15,6 +17,8 @@ import level from 'level'
 import Web3 from 'web3'
 
 import fs from 'fs'
+
+
 
 
 
@@ -140,11 +144,50 @@ export let BLOCKCHAIN_DATABASES = {
 
 }
 
+// Required by KLY-EVM JSON-RPC API, so make it available via global
 
 global.STATE = BLOCKCHAIN_DATABASES.STATE
 
 
 
+
+export let getCurrentShardLeaderURL = async shardID => {
+
+    let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
+    
+    let epochFullID = epochHandler.hash+"#"+epochHandler.id
+
+    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
+
+    if(!currentEpochMetadata) return
+
+    let canGenerateBlocksNow = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
+
+    if(canGenerateBlocksNow) return {isMeShardLeader:true}
+
+    else {
+
+        let indexOfCurrentLeaderForShard = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID) // {currentLeader:<id>}
+
+        let currentLeaderPubkey = epochHandler.leadersSequence[shardID][indexOfCurrentLeaderForShard.currentLeader]
+
+        // Get the url of current shard leader on some shard
+
+        let poolStorage = GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.get(currentLeaderPubkey+'(POOL)_STORAGE_POOL')
+
+        poolStorage ||= await getFromApprovementThreadState(currentLeaderPubkey+'(POOL)_STORAGE_POOL').catch(()=>null)
+
+
+        if(poolStorage) return {isMeShardLeader:false,url:poolStorage.poolURL}
+        
+    }
+    
+}
+
+
+// Required by KLY-EVM JSON-RPC API, so make it available via global
+
+global.getCurrentShardLeaderURL = getCurrentShardLeaderURL
 
 
 //___________________________________________________________ 0. Set the handlers for system signals(e.g. Ctrl+C to stop blockchain) ___________________________________________________________

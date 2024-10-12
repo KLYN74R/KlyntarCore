@@ -1,6 +1,4 @@
-import {EPOCH_METADATA_MAPPING, GLOBAL_CACHES, NODE_METADATA, WORKING_THREADS} from '../../blockchain_preparation.js'
-
-import {getFromApprovementThreadState} from '../../common_functions/approvement_thread_related.js'
+import {EPOCH_METADATA_MAPPING, getCurrentShardLeaderURL, NODE_METADATA, WORKING_THREADS} from '../../blockchain_preparation.js'
 
 import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
@@ -281,52 +279,21 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLO
 
     // In case this node is not a shard leader - just check the tx.payload.shard, get the shard leader and transfer tx to that leader
     
-    let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
-    
-    let epochFullID = epochHandler.hash+"#"+epochHandler.id
+    let whoIsShardLeader = await getCurrentShardLeaderURL(transaction.payload.shard)
 
-    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
+    if(!whoIsShardLeader?.isMeShardLeader){
 
-    if(!currentEpochMetadata){
+        if(whoIsShardLeader.url){
 
-        response.send({err:'Try later'})
-
-        return
-
-    }
-
-    let canGenerateBlocksNow = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
-
-    if(!canGenerateBlocksNow){
-
-        let indexOfCurrentLeaderForShard = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(transaction.payload.shard) // {currentLeader:<id>}
-
-        let currentLeaderPubkey = epochHandler.leadersSequence[transaction.payload.shard][indexOfCurrentLeaderForShard.currentLeader]
-
-        // Get the url of current shard leader on some shard
-
-        let poolStorage = GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.get(currentLeaderPubkey+'(POOL)_STORAGE_POOL')
-
-        poolStorage ||= await getFromApprovementThreadState(currentLeaderPubkey+'(POOL)_STORAGE_POOL').catch(()=>null)
-
-
-        if(poolStorage){
-
-            fetch(poolStorage.poolURL+'/transaction',{
+            fetch(whoIsShardLeader.url+'/transaction',{
 
                 method:'POST', body:request.body
     
             }).catch(error=>error)
 
-            response.send({status:`Tx redirected to current shard leader: ${currentLeaderPubkey}`})
-        
-        } else {
+            response.send({status:`Ok, tx redirected to current shard leader`})
 
-            response.send({err:`Impossible to redirect to current shard leader`})
-    
-            return
-    
-        }
+        } else response.send({err:`Impossible to redirect to current shard leader`})
 
     } else if(NODE_METADATA.MEMPOOL.length < CONFIGURATION.NODE_LEVEL.TXS_MEMPOOL_SIZE){
 
@@ -354,7 +321,6 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLO
 
     } else response.send({err:'Mempool is fullfilled'})
     
-
 })
 
 
