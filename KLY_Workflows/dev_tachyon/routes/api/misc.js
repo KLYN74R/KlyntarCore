@@ -1,4 +1,4 @@
-import {EPOCH_METADATA_MAPPING, NODE_METADATA, WORKING_THREADS} from '../../blockchain_preparation.js'
+import {EPOCH_METADATA_MAPPING, getCurrentShardLeaderURL, NODE_METADATA, WORKING_THREADS} from '../../blockchain_preparation.js'
 
 import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
@@ -276,9 +276,26 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLO
         return
     
     }
+
+    // In case this node is not a shard leader - just check the tx.payload.shard, get the shard leader and transfer tx to that leader
     
-        
-    if(NODE_METADATA.MEMPOOL.length < CONFIGURATION.NODE_LEVEL.TXS_MEMPOOL_SIZE){
+    let whoIsShardLeader = await getCurrentShardLeaderURL(transaction.payload.shard)
+
+    if(!whoIsShardLeader?.isMeShardLeader){
+
+        if(whoIsShardLeader.url){
+
+            fetch(whoIsShardLeader.url+'/transaction',{
+
+                method:'POST', body:request.body
+    
+            }).catch(error=>error)
+
+            response.send({status:`Ok, tx redirected to current shard leader`})
+
+        } else response.send({err:`Impossible to redirect to current shard leader`})
+
+    } else if(NODE_METADATA.MEMPOOL.length < CONFIGURATION.NODE_LEVEL.TXS_MEMPOOL_SIZE){
 
         let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
     
@@ -304,7 +321,6 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLO
 
     } else response.send({err:'Mempool is fullfilled'})
     
-
 })
 
 
