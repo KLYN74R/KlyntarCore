@@ -268,7 +268,7 @@ export let VERIFIERS = {
     
     */
 
-    TX:async(originShard,tx,rewardsAndSuccessfulTxsCollector)=>{
+    TX:async(originShard,tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
 
         let senderAccount = await getUserAccountFromState(originShard+':'+tx.creator)
         
@@ -290,7 +290,7 @@ export let VERIFIERS = {
 
             }
 
-            if(tx.payload.to.startsWith('0x')){
+            if(tx.payload.to.startsWith('0x') && tx.payload.to.length === 42){
 
                 // It's transfer from native env to EVM
 
@@ -338,11 +338,17 @@ export let VERIFIERS = {
                     let amountForRecipient = Number(tx.payload.amount.toFixed(9))
 
 
-                    if(tx.payload.to.startsWith('0x')){
+                    if(tx.payload.to.startsWith('0x') && tx.payload.to.length === 42){
 
                         recipientAccount.balance += BigInt(amountForRecipient) * (BigInt(10) ** BigInt(18))
 
                         await KLY_EVM.updateAccount(tx.payload.to,recipientAccount)
+
+                        // Add binding to shard in case it's new EVM
+
+                        let lowerCaseAddressAsStringWithout0x = tx.payload.to.slice(2).toLowerCase()
+
+                        atomicBatch.put(`SHARD_BIND:${lowerCaseAddressAsStringWithout0x}`,{shard:originShard})
 
                     } else {
 
