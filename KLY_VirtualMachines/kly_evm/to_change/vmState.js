@@ -144,9 +144,9 @@ class VmState {
         
         // KLY-EVM extra logic
 
-        let addressAsStringWithout0x = address.buf.toString('hex');
+        let lowerCaseAddressAsStringWithout0x = address.buf.toString('hex');
 
-        let bindedToShard = await global.GET_SHARD_ASSIGNMENT(addressAsStringWithout0x);
+        let bindedToShard = await global.GET_SHARD_ASSIGNMENT(lowerCaseAddressAsStringWithout0x);
 
         // In case it's new contract and we don't have binding for it - bind to current context
 
@@ -156,7 +156,7 @@ class VmState {
 
             else {
 
-                global.ATOMIC_BATCH.put('SHARD_BIND:'+addressAsStringWithout0x,{shard:this.evmContext})
+                global.ATOMIC_BATCH.put('SHARD_BIND:'+lowerCaseAddressAsStringWithout0x,{shard:this.evmContext})
 
                 bindedToShard = this.evmContext    
 
@@ -168,13 +168,13 @@ class VmState {
 
         let evmExecutionContext = this.isSandboxExecution ? global.KLY_EVM_OPTIONS.bindContext : this.evmContext
 
-        let accountInTouchedList = this.touchedAccounts ? this.touchedAccounts.includes(`0x${addressAsStringWithout0x}`) : true
+        let accountInTouchedList = this.touchedAccounts ? this.touchedAccounts.includes(`0x${lowerCaseAddressAsStringWithout0x}`) : true
 
-        let notSpecialAccount = addressAsStringWithout0x !== global.KLY_EVM_OPTIONS.coinbase && addressAsStringWithout0x !== global.KLY_EVM_OPTIONS.connectorAddress
+        let notSpecialAccount = lowerCaseAddressAsStringWithout0x !== global.KLY_EVM_OPTIONS.coinbase && lowerCaseAddressAsStringWithout0x !== global.KLY_EVM_OPTIONS.connectorAddress
 
         if(bindedToShard !== evmExecutionContext && notSpecialAccount || !accountInTouchedList){
 
-            throw new Error(`Account 0x${addressAsStringWithout0x} binded to shard ${bindedToShard}, but you try to change the state of it via tx on shard ${evmExecutionContext}`)
+            throw new Error(`Account 0x${lowerCaseAddressAsStringWithout0x} binded to shard ${bindedToShard}, but you try to change the state of it via tx on shard ${evmExecutionContext}`)
 
         }
 
