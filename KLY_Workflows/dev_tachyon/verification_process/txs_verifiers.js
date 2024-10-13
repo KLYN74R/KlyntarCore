@@ -9,6 +9,8 @@ import {verifyQuorumMajoritySolution} from '../common_functions/work_with_proofs
 
 import {blake3Hash, verifyEd25519} from '../../../KLY_Utils/utils.js'
 
+import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyn74r.js'
+
 import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
 
 import tbls from '../../../KLY_Utils/signatures/threshold/tbls.js'
@@ -18,8 +20,6 @@ import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 import {WVM} from '../../../KLY_VirtualMachines/kly_wvm/vm.js'
 
 import {SYSTEM_CONTRACTS} from '../system_contracts/root.js'
-
-import {BLOCKCHAIN_GENESIS} from '../../../klyn74r.js'
 
 import {TXS_FILTERS} from './txs_filters.js'
 
@@ -290,11 +290,11 @@ export let VERIFIERS = {
 
             }
 
-            if(tx.payload.toEVMAccount){
+            if(tx.payload.to.startsWith('0x')){
 
                 // It's transfer from native env to EVM
 
-                recipientAccount = await KLY_EVM.getAccount(tx.payload.toEVMAccount)
+                recipientAccount = await KLY_EVM.getAccount(tx.payload.to)
 
             } else if(!recipientAccount){
     
@@ -338,13 +338,11 @@ export let VERIFIERS = {
                     let amountForRecipient = Number(tx.payload.amount.toFixed(9))
 
 
-                    if(tx.payload.toEVMAccount){
+                    if(tx.payload.to.startsWith('0x')){
 
                         recipientAccount.balance += BigInt(amountForRecipient) * (BigInt(10) ** BigInt(18))
 
-                        await KLY_EVM.updateAccount(tx.payload.toEVMAccount,recipientAccount)
-                        
-                        touchedAccounts.push(tx.payload.toEVMAccount)
+                        await KLY_EVM.updateAccount(tx.payload.to,recipientAccount)
 
                     } else {
 
@@ -681,11 +679,11 @@ export let VERIFIERS = {
                     
                 }
 
-                // In case it was tx to account 0x00..7 - it's special transaction, maybe transfer from EVM to native env
+                // In case it was tx to account of connector address (0x00..07) - it's special transaction, maybe transfer from EVM to native env
 
-                if(tx.to === '0x0000000000000000000000000000000000000007'){
+                if(tx.to === CONFIGURATION.KLY_EVM.connectorAddress){
 
-                    let parsedData = JSON.parse(tx.data.slice(2))
+                    let parsedData = JSON.parse(web3.utils.hexToAscii(tx.data))
 
                     if(parsedData.to){
 
@@ -693,9 +691,27 @@ export let VERIFIERS = {
 
                         // Transfer coins
 
+                        if(!accountToTransfer){
+
+                            accountToTransfer = {
+                
+                                type:'eoa', balance:0, uno:0, nonce:0, gas:0
+                            
+                            }
+                            
+                            // In case recipient is BLS multisig, we need to add one more field - "rev_t" (reverse threshold to account to allow to spend even in case REV_T number of pubkeys don't want to sign)
+            
+                            if(typeof parsedData.rev_t === 'number') accountToTransfer.rev_t = tx.payload.rev_t
+            
+                            else if(parsedData.pqcPub) accountToTransfer.pqcPub = tx.payload.pqcPub
+                
+                            GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+parsedData.to,accountToTransfer) // add to cache to collapse after all events in block
+                        
+                        }
+
                         accountToTransfer.balance = Number((accountToTransfer.balance + totalSpentByTxInKLY).toFixed(9))
                         
-                        touchedAccounts.push(accountToTransfer)
+                        touchedAccounts.push(parsedData.to)
 
                     }
 
