@@ -121,7 +121,7 @@ class KLY_EVM_CLASS {
         
         let tx = Transaction.fromSerializedTx(Buffer.from(serializedEVMTxWithout0x,'hex'),{freeze:false,common})
 
-        // Try to parse tx.data - maybe it contains additional data, not only calldata
+        // Try to parse tx.data - maybe it contains additional data(for parallelization, AAv2, etc.), not only calldata
 
         let touchedAccounts = null, accountAbstractionV2Data = null, pureEvmCalldata = null
 
@@ -174,11 +174,38 @@ class KLY_EVM_CLASS {
         let tx = isJustCall ? Transaction.fromTxData(txDataOrSerializedTxInHexWith0x,{freeze:false,common}) : Transaction.fromSerializedTx(Buffer.from(txDataOrSerializedTxInHexWith0x.slice(2),'hex'),{freeze:false,common})
 
         let block = this.block
+
+
+        // Try to parse tx.data - maybe it contains additional data(for parallelization, AAv2, etc.), not only calldata
+
+        let touchedAccounts = null, accountAbstractionV2Data = null, pureEvmCalldata = null
+
+        try {
+
+            let parsedDataField = JSON.parse(web3.utils.hexToAscii(tx.data))
+
+            if(parsedDataField){
+
+                touchedAccounts = parsedDataField.touchedAccounts
+    
+                accountAbstractionV2Data = parsedDataField.accountAbstractionV2Data
+    
+                pureEvmCalldata = parsedDataField.pureEvmCalldata
+    
+            }
+    
+        } catch {
+
+            pureEvmCalldata = tx.data
+
+        }
         
 
         if(isJustCall){
 
             let {to,data} = tx
+
+            data = pureEvmCalldata
 
             let vmCopy = await this.vm.copy()
 
@@ -192,7 +219,9 @@ class KLY_EVM_CLASS {
 
                 block, gasLimit,
 
-                skipBalance:true, isSandboxExecution:true
+                skipBalance:true, isSandboxExecution:true,
+
+                touchedAccounts, accountAbstractionV2Data
 
             })
 
@@ -204,7 +233,7 @@ class KLY_EVM_CLASS {
 
             let origin = tx.getSenderAddress()
 
-            let {to,data,value,gasLimit} = tx
+            let {to,value,gasLimit} = tx
 
             let caller = origin
 
@@ -224,11 +253,15 @@ class KLY_EVM_CLASS {
 
                     let txResult = await vmCopy.evm.runCall({
 
-                        origin,caller,to,data,gasLimit,
+                        data:pureEvmCalldata,
+
+                        origin, caller, to, gasLimit,
 
                         block,
 
-                        isSandboxExecution:true
+                        isSandboxExecution:true,
+
+                        touchedAccounts, accountAbstractionV2Data
 
                     })
 

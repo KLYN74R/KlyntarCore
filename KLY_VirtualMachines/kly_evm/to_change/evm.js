@@ -455,6 +455,8 @@ class EVM {
         // KLY-EVM extra data
         this.eei.isSandboxExecution = opts.isSandboxExecution
         this.eei.evmContext = opts.evmContext
+        this.eei.touchedAccounts = opts.touchedAccounts
+        this.eei.accountAbstractionV2Data = opts.accountAbstractionV2Data
 
         let message = opts.message;
         let callerAccount;
@@ -490,7 +492,10 @@ class EVM {
                 versionedHashes: opts.versionedHashes,
 
                 isSandboxExecution:opts.isSandboxExecution,
-                evmContext:opts.evmContext
+                evmContext:opts.evmContext,
+
+                touchedAccounts:opts.touchedAccounts,
+                accountAbstractionV2Data:opts.accountAbstractionV2Data
             });
         }
         if (message.depth === 0) {
