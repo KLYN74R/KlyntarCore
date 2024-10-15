@@ -366,7 +366,7 @@ export let getFirstBlockOnEpochOnSpecificShard = async(epochHandler,shardID,getB
 
 export let verifyQuorumMajoritySolution = function(dataThatShouldBeSigned,agreementsMapping) {
 
-    this.contractGasHandler.gasBurned += 60000;
+    this.contractGasHandler.gasBurned += BigInt(60000);
 
     // Take the epoch handler on verification thread (VT)
 
