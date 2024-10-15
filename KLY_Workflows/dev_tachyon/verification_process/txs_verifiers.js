@@ -648,13 +648,13 @@ export let VERIFIERS = {
 
         if(evmResult && !evmResult.execResult.exceptionError){
           
-            let totalSpentInWei = evmResult.amountSpent // BigInt value
+            let totalSpentForFeesInWei = evmResult.amountSpent // BigInt value
 
-            let totalSpentByTxInKLY = Number(web3.utils.fromWei(totalSpentInWei.toString(),'ether'))
+            let totalSpentForFeesInKLY = Number(web3.utils.fromWei(totalSpentForFeesInWei.toString(),'ether'))
           
             // Add appropriate value to rewardbox to distribute among KLY pools
 
-            rewardsAndSuccessfulTxsCollector.fees += totalSpentByTxInKLY
+            rewardsAndSuccessfulTxsCollector.fees += totalSpentForFeesInKLY
 
 
             let possibleReceipt = KLY_EVM.getTransactionWithReceiptToStore(
@@ -676,6 +676,7 @@ export let VERIFIERS = {
                 let propsedFee = Number(web3.utils.fromWei((tx.gasLimit * tx.gasPrice).toString(),'ether'))
                                 
                 let touchedAccounts = [tx.from, tx.to]
+
 
                 if(receipt.contractAddress){
 
@@ -715,7 +716,9 @@ export let VERIFIERS = {
                         
                         }
 
-                        accountToTransfer.balance = Number((accountToTransfer.balance + totalSpentByTxInKLY).toFixed(9))
+                        let transferValue = Number(web3.utils.fromWei(tx.value,'ether'))
+
+                        accountToTransfer.balance = Number((accountToTransfer.balance + transferValue).toFixed(9))
                         
                         touchedAccounts.push(parsedData.to)
 

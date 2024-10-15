@@ -135,7 +135,7 @@ class KLY_EVM_CLASS {
     
                 accountAbstractionV2Data = parsedDataField.accountAbstractionV2Data
     
-                pureEvmCalldata = parsedDataField.pureEvmCalldata || '0x00'
+                pureEvmCalldata = new Uint8Array(web3.utils.hexToBytes(parsedDataField.pureEvmCalldata)) || new Uint8Array(0)
     
             }
     
@@ -150,7 +150,7 @@ class KLY_EVM_CLASS {
         let block = this.block 
 
 
-        tx.data = new Uint8Array(web3.utils.hexToBytes(pureEvmCalldata))
+        tx.data = pureEvmCalldata
 
         
         let txResult = await this.vm.runTx({tx,block,evmCaller,evmContext,touchedAccounts,accountAbstractionV2Data})
