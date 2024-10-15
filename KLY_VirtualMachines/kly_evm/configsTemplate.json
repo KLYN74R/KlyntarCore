@@ -5,7 +5,7 @@
         "networkId":"0x1ca3",
         "chainId":"0x1ca3",
         "coinbase":"0x0000000000000000000000000000000000000000",
-        "connectorAddress":"0x0000000000000000000000000000000000000007",
+        "connectorAddress":"0x000000000000000000000000000000000000dead",
         "hardfork":"merge",
         "gasLimitForBlock":30000000,
         

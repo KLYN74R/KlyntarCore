@@ -644,7 +644,7 @@ export let VERIFIERS = {
 
         global.ATOMIC_BATCH = atomicBatch
 
-        let evmResult = await KLY_EVM.callEVM(originShard,txWithPayload.payload).catch(()=>false)
+        let evmResult = await KLY_EVM.callEVM(originShard,txWithPayload.payload).catch(err=>false)
 
         if(evmResult && !evmResult.execResult.exceptionError){
           

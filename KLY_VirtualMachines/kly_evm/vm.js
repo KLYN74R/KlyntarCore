@@ -127,7 +127,7 @@ class KLY_EVM_CLASS {
 
         try {
 
-            let parsedDataField = JSON.parse(web3.utils.hexToAscii(tx.data))
+            let parsedDataField = JSON.parse(tx.data.toString())
 
             if(parsedDataField){
 
@@ -135,7 +135,7 @@ class KLY_EVM_CLASS {
     
                 accountAbstractionV2Data = parsedDataField.accountAbstractionV2Data
     
-                pureEvmCalldata = parsedDataField.pureEvmCalldata
+                pureEvmCalldata = parsedDataField.pureEvmCalldata || '0x00'
     
             }
     
@@ -147,10 +147,12 @@ class KLY_EVM_CLASS {
 
         let evmCaller = tx.getSenderAddress()
 
-        let block = this.block
+        let block = this.block 
 
-        tx.data = pureEvmCalldata
 
+        tx.data = new Uint8Array(web3.utils.hexToBytes(pureEvmCalldata))
+
+        
         let txResult = await this.vm.runTx({tx,block,evmCaller,evmContext,touchedAccounts,accountAbstractionV2Data})
 
 
@@ -182,15 +184,20 @@ class KLY_EVM_CLASS {
 
         try {
 
-            let parsedDataField = JSON.parse(web3.utils.hexToAscii(tx.data))
+            let parsedDataField = JSON.parse(tx.data.toString())
 
             if(parsedDataField){
 
                 touchedAccounts = parsedDataField.touchedAccounts
     
                 accountAbstractionV2Data = parsedDataField.accountAbstractionV2Data
-    
-                pureEvmCalldata = parsedDataField.pureEvmCalldata
+
+
+                if(parsedDataField.pureEvmCalldata){
+
+                    pureEvmCalldata = new Uint8Array(web3.utils.hexToBytes(pureEvmCalldata))
+                        
+                } else pureEvmCalldata = new Uint8Array(0);
     
             }
     
