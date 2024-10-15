@@ -590,7 +590,7 @@ export let VERIFIERS = {
 
                                 let verificationKey = contractStorage.vKey
 
-                                contractGasHandler.gasBurned += 60000;
+                                contractGasHandler.gasBurned += BigInt(60000);
 
                                 let zkProofIsOk = await functionsToInjectToVm.zkSNARK(protoName,verificationKey,publicInputs,proof)
 

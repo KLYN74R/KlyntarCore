@@ -41,7 +41,7 @@ let snarkjs = createRequire(import.meta.url)('snarkjs');
 
 export let verifyQuorumMajoritySolutionFromVM = function(dataThatShouldBeSigned,agreementsMapping) {
 
-    this.contractGasHandler.gasBurned += 60000;
+    this.contractGasHandler.gasBurned += BigInt(60000);
 
     // Take the epoch handler on verification thread (VT)
 
@@ -74,7 +74,7 @@ export const blsFunc = function(functionName, params) {
     
     // Increase the amount of burned gas depends on function & params
 
-    this.contractGasHandler.gasBurned += 50000;
+    this.contractGasHandler.gasBurned += BigInt(50000);
     
     // Available functions => singleVerify, aggregatePublicKeys, aggregateSignatures, verifyThresholdSignature
         
@@ -86,7 +86,7 @@ export const blsFunc = function(functionName, params) {
 
 export const pqc = function(algorithm, signedData, pubKey, signature) {
 
-    this.contractGasHandler.gasBurned += 60000;
+    this.contractGasHandler.gasBurned += BigInt(60000);
 
     // Available functions BLISS / Dilithium
 
@@ -100,7 +100,7 @@ export const pqc = function(algorithm, signedData, pubKey, signature) {
 
 export const tblsVerify = function(masterPubKey, masterSigna, signedData) {
 
-    this.contractGasHandler.gasBurned += 60000;
+    this.contractGasHandler.gasBurned += BigInt(60000);
 
     return tbls.verifyTBLS(masterPubKey, masterSigna, signedData);
 
@@ -109,7 +109,7 @@ export const tblsVerify = function(masterPubKey, masterSigna, signedData) {
 // Ed25519 functions
 export const ed25519 = function(signedData, pubKey, signature) {
 
-    this.contractGasHandler.gasBurned += 10000;
+    this.contractGasHandler.gasBurned += BigInt(10000);
 
     return verifyEd25519Sync(signedData, signature, pubKey);
 
@@ -118,21 +118,21 @@ export const ed25519 = function(signedData, pubKey, signature) {
 // SSS (Shamir's Secret Sharing) placeholder function
 export const sss = function() {
 
-    this.contractGasHandler.gasBurned += 60000;
+    this.contractGasHandler.gasBurned += BigInt(60000);
 
 };
 
 // MPC (Multi-Party Computation) placeholder function
 export const mpc = function() {
 
-    this.contractGasHandler.gasBurned += 60000;
+    this.contractGasHandler.gasBurned += BigInt(60000);
 
 };
 
 // FHE (Fully Homomorphic Encryption) placeholder function
 export const fhe = function() {
 
-    this.contractGasHandler.gasBurned += 60000;
+    this.contractGasHandler.gasBurned += BigInt(60000);
 
 };
 
@@ -157,7 +157,7 @@ export const zkSNARK = async function(protoName, verificationKey, publicInputs, 
 
 export let getRandomValue = function() {
 
-    this.contractGasHandler.gasBurned += 6000;
+    this.contractGasHandler.gasBurned += BigInt(6000);
 
     /*
     
@@ -180,7 +180,7 @@ export let getRandomValue = function() {
 
 export let verifyVrfRandomValue = function(randomHashAsHexString,dataAsHexString,pubkeyAsHexString,proofAsHexString) {
 
-    this.contractGasHandler.gasBurned += 60000;
+    this.contractGasHandler.gasBurned += BigInt(60000);
 
     // Deserialize (string => []uint8) and verify equality
 
@@ -206,7 +206,7 @@ export let verifyVrfRandomValue = function(randomHashAsHexString,dataAsHexString
 
 export let getFromState = function (key) {
 
-    this.contractGasHandler.gasBurned += 1000;
+    this.contractGasHandler.gasBurned += BigInt(1000);
         
     let keyValue = this.contractInstance.__getString(key);
     
@@ -218,7 +218,7 @@ export let getFromState = function (key) {
 
 export let setToState = function(key,value) {
 
-    this.contractGasHandler.gasBurned += 5000;
+    this.contractGasHandler.gasBurned += BigInt(5000);
 
     let keyValue = this.contractInstance.__getString(key);
 
@@ -233,7 +233,7 @@ export let setToState = function(key,value) {
 // Function transfer native coins to another account(used for WVM)
 export let transferNativeCoins = function(amount) {
 
-    this.contractGasHandler.gasBurned += 1000;
+    this.contractGasHandler.gasBurned += BigInt(1000);
 
     if(this.contractAccount.balance - amount >= 0){
 
