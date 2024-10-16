@@ -644,17 +644,17 @@ export let VERIFIERS = {
 
         global.ATOMIC_BATCH = atomicBatch
 
-        let evmResult = await KLY_EVM.callEVM(originShard,txWithPayload.payload).catch(()=>false)
+        let evmResult = await KLY_EVM.callEVM(originShard,txWithPayload.payload)
 
         if(evmResult && !evmResult.execResult.exceptionError){
           
-            let totalSpentInWei = evmResult.amountSpent // BigInt value
+            let totalSpentForFeesInWei = evmResult.amountSpent // BigInt value
 
-            let totalSpentByTxInKLY = Number(web3.utils.fromWei(totalSpentInWei.toString(),'ether'))
+            let totalSpentForFeesInKLY = Number(web3.utils.fromWei(totalSpentForFeesInWei.toString(),'ether'))
           
             // Add appropriate value to rewardbox to distribute among KLY pools
 
-            rewardsAndSuccessfulTxsCollector.fees += totalSpentByTxInKLY
+            rewardsAndSuccessfulTxsCollector.fees += totalSpentForFeesInKLY
 
 
             let possibleReceipt = KLY_EVM.getTransactionWithReceiptToStore(
@@ -677,6 +677,7 @@ export let VERIFIERS = {
                                 
                 let touchedAccounts = [tx.from, tx.to]
 
+
                 if(receipt.contractAddress){
 
                     touchedAccounts.push(receipt.contractAddress)
@@ -685,11 +686,13 @@ export let VERIFIERS = {
                     
                 }
 
-                // In case it was tx to account of connector address (0x00..07) - it's special transaction, maybe transfer from EVM to native env
+                // In case it was tx to account of connector address (0xdead) - it's special transaction, maybe transfer from EVM to native env
 
                 if(tx.to === CONFIGURATION.KLY_EVM.connectorAddress){
 
                     let parsedData = JSON.parse(web3.utils.hexToAscii(tx.data))
+
+                    if(Array.isArray(parsedData.touchedAccounts) && !parsedData.touchedAccounts.includes(parsedData.to)) return {isOk:false,reason:'EVM'}
 
                     if(parsedData.to){
 
@@ -715,7 +718,9 @@ export let VERIFIERS = {
                         
                         }
 
-                        accountToTransfer.balance = Number((accountToTransfer.balance + totalSpentByTxInKLY).toFixed(9))
+                        let transferValue = Number(web3.utils.fromWei(tx.value,'ether'))
+
+                        accountToTransfer.balance = Number((accountToTransfer.balance + transferValue).toFixed(9))
                         
                         touchedAccounts.push(parsedData.to)
 

@@ -119,13 +119,41 @@ class KLY_EVM_CLASS {
         
         let serializedEVMTxWithout0x = serializedEVMTxWith0x.slice(2) // delete 0x
         
-        let tx = Transaction.fromSerializedTx(Buffer.from(serializedEVMTxWithout0x,'hex'))
+        let tx = Transaction.fromSerializedTx(Buffer.from(serializedEVMTxWithout0x,'hex'),{freeze:false,common})
+
+        // Try to parse tx.data - maybe it contains additional data(for parallelization, AAv2, etc.), not only calldata
+
+        let touchedAccounts = null, accountAbstractionV2Data = null, pureEvmCalldata = null
+
+        try {
+
+            let parsedDataField = JSON.parse(tx.data.toString())
+
+            if(parsedDataField){
+
+                touchedAccounts = parsedDataField.touchedAccounts
+    
+                accountAbstractionV2Data = parsedDataField.accountAbstractionV2Data
+    
+                pureEvmCalldata = new Uint8Array(web3.utils.hexToBytes(parsedDataField.pureEvmCalldata)) || new Uint8Array(0)
+    
+            }
+    
+        } catch {
+
+            pureEvmCalldata = tx.data
+
+        }
 
         let evmCaller = tx.getSenderAddress()
 
-        let block = this.block
+        let block = this.block 
 
-        let txResult = await this.vm.runTx({tx,block,evmCaller,evmContext})
+
+        tx.data = pureEvmCalldata
+
+        
+        let txResult = await this.vm.runTx({tx,block,evmCaller,evmContext,touchedAccounts,accountAbstractionV2Data})
 
 
         // We'll need full result to store logs and so on
@@ -148,11 +176,43 @@ class KLY_EVM_CLASS {
         let tx = isJustCall ? Transaction.fromTxData(txDataOrSerializedTxInHexWith0x,{freeze:false,common}) : Transaction.fromSerializedTx(Buffer.from(txDataOrSerializedTxInHexWith0x.slice(2),'hex'),{freeze:false,common})
 
         let block = this.block
+
+
+        // Try to parse tx.data - maybe it contains additional data(for parallelization, AAv2, etc.), not only calldata
+
+        let touchedAccounts = null, accountAbstractionV2Data = null, pureEvmCalldata = null
+
+        try {
+
+            let parsedDataField = JSON.parse(tx.data.toString())
+
+            if(parsedDataField){
+
+                touchedAccounts = parsedDataField.touchedAccounts
+    
+                accountAbstractionV2Data = parsedDataField.accountAbstractionV2Data
+
+
+                if(parsedDataField.pureEvmCalldata){
+
+                    pureEvmCalldata = new Uint8Array(web3.utils.hexToBytes(pureEvmCalldata))
+                        
+                } else pureEvmCalldata = new Uint8Array(0);
+    
+            }
+    
+        } catch {
+
+            pureEvmCalldata = tx.data
+
+        }
         
 
         if(isJustCall){
 
             let {to,data} = tx
+
+            data = pureEvmCalldata
 
             let vmCopy = await this.vm.copy()
 
@@ -166,7 +226,9 @@ class KLY_EVM_CLASS {
 
                 block, gasLimit,
 
-                skipBalance:true, isSandboxExecution:true
+                skipBalance:true, isSandboxExecution:true,
+
+                touchedAccounts, accountAbstractionV2Data
 
             })
 
@@ -178,7 +240,7 @@ class KLY_EVM_CLASS {
 
             let origin = tx.getSenderAddress()
 
-            let {to,data,value,gasLimit} = tx
+            let {to,value,gasLimit} = tx
 
             let caller = origin
 
@@ -198,11 +260,15 @@ class KLY_EVM_CLASS {
 
                     let txResult = await vmCopy.evm.runCall({
 
-                        origin,caller,to,data,gasLimit,
+                        data:pureEvmCalldata,
+
+                        origin, caller, to, gasLimit,
 
                         block,
 
-                        isSandboxExecution:true
+                        isSandboxExecution:true,
+
+                        touchedAccounts, accountAbstractionV2Data
 
                     })
 

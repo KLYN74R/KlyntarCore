@@ -28,8 +28,11 @@ function execHardfork(hardfork, preMergeHf) {
 async function runTx(opts) {
 
     // KLY-EVM extra data
+    
     this.eei.isSandboxExecution = opts.isSandboxExecution
     this.eei.evmContext = opts.evmContext
+    this.eei.touchedAccounts = opts.touchedAccounts
+    this.eei.accountAbstractionV2Data = opts.accountAbstractionV2Data
 
     // create a reasonable default if no block is given
     opts.block = opts.block ?? block_1.Block.fromBlockData({}, { common: this._common });
@@ -320,7 +323,11 @@ async function _runTx(opts) {
         versionedHashes,
 
         isSandboxExecution:opts.isSandboxExecution,
-        evmContext:opts.evmContext
+        evmContext:opts.evmContext,
+        
+        touchedAccounts:opts.touchedAccounts,
+        accountAbstractionV2Data:opts.accountAbstractionV2Data
+
     }));
     if (this.DEBUG) {
         debug(`Update fromAccount (caller) nonce (-> ${fromAccount.nonce})`);

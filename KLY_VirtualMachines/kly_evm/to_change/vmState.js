@@ -170,11 +170,21 @@ class VmState {
 
         let accountInTouchedList = this.touchedAccounts ? this.touchedAccounts.includes(`0x${lowerCaseAddressAsStringWithout0x}`) : true
 
-        let notSpecialAccount = lowerCaseAddressAsStringWithout0x !== global.KLY_EVM_OPTIONS.coinbase && lowerCaseAddressAsStringWithout0x !== global.KLY_EVM_OPTIONS.connectorAddress
+        let addressWith0xPrefix = `0x${lowerCaseAddressAsStringWithout0x}`
 
-        if(bindedToShard !== evmExecutionContext && notSpecialAccount || !accountInTouchedList){
+        let itsSpecialAccount = addressWith0xPrefix === global.KLY_EVM_OPTIONS.coinbase || addressWith0xPrefix === global.KLY_EVM_OPTIONS.connectorAddress
 
-            throw new Error(`Account 0x${lowerCaseAddressAsStringWithout0x} binded to shard ${bindedToShard}, but you try to change the state of it via tx on shard ${evmExecutionContext}`)
+        if(itsSpecialAccount) accountInTouchedList = true
+
+        if(bindedToShard !== evmExecutionContext){
+
+            throw new Error(`Account ${addressWith0xPrefix} binded to shard ${bindedToShard}, but you try to change the state of it via tx on shard ${evmExecutionContext}`)
+
+        }
+
+        if(!accountInTouchedList){
+
+            throw new Error(`Account ${addressWith0xPrefix} not in .touchedAccounts`)
 
         }
 
