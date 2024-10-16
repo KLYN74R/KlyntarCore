@@ -644,7 +644,7 @@ export let VERIFIERS = {
 
         global.ATOMIC_BATCH = atomicBatch
 
-        let evmResult = await KLY_EVM.callEVM(originShard,txWithPayload.payload).catch(err=>false)
+        let evmResult = await KLY_EVM.callEVM(originShard,txWithPayload.payload)
 
         if(evmResult && !evmResult.execResult.exceptionError){
           
@@ -686,11 +686,13 @@ export let VERIFIERS = {
                     
                 }
 
-                // In case it was tx to account of connector address (0x00..07) - it's special transaction, maybe transfer from EVM to native env
+                // In case it was tx to account of connector address (0xdead) - it's special transaction, maybe transfer from EVM to native env
 
                 if(tx.to === CONFIGURATION.KLY_EVM.connectorAddress){
 
                     let parsedData = JSON.parse(web3.utils.hexToAscii(tx.data))
+
+                    if(Array.isArray(parsedData.touchedAccounts) && !parsedData.touchedAccounts.includes(parsedData.to)) return {isOk:false,reason:'EVM'}
 
                     if(parsedData.to){
 

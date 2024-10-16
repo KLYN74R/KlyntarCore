@@ -20,6 +20,8 @@ import {CONFIGURATION} from '../../../klyn74r.js'
 
 import {VERIFIERS} from './txs_verifiers.js'
 
+import {Transaction} from '@ethereumjs/tx'
+
 import Block from '../structures/block.js'
 
 import fetch from 'node-fetch'
@@ -988,6 +990,35 @@ let checkConnectionWithPool = async(poolToCheckConnectionWith,vtEpochHandler) =>
 
 
 
+let getTouchedAccountsByEvmTx = serializedEVMTx => {
+
+    let serializedEVMTxWithout0x = serializedEVMTx.slice(2) // delete 0x
+        
+    let txDeserialized = Transaction.fromSerializedTx(Buffer.from(serializedEVMTxWithout0x,'hex'))
+    
+    // Try to parse tx.data - maybe it contains additional data(for parallelization, AAv2, etc.), not only calldata
+    
+    let touchedAccounts = null
+    
+    try {
+    
+        let parsedDataField = JSON.parse(txDeserialized.data.toString())
+
+        touchedAccounts = parsedDataField.touchedAccounts
+            
+    } catch {
+
+        touchedAccounts = null
+
+    }
+
+    return touchedAccounts
+
+}
+
+
+
+
 let getPreparedTxsForParallelization = txsArray => {
 
 
@@ -1004,9 +1035,15 @@ let getPreparedTxsForParallelization = txsArray => {
 
         txCounter++
 
-        if(Array.isArray(transaction?.payload?.touchedAccounts)){
+        let possibleTouchedAccounts = null
 
-            for(let touchedAccount of transaction.payload.touchedAccounts){
+        if(transaction.type === 'EVM_CALL') possibleTouchedAccounts = getTouchedAccountsByEvmTx(transaction.payload)
+
+        else possibleTouchedAccounts = transaction?.payload?.touchedAccounts
+
+        if(Array.isArray(possibleTouchedAccounts)){
+
+            for(let touchedAccount of possibleTouchedAccounts){
 
                 if(numberOfAccountTouchesPerAccount.has(touchedAccount)){
     
@@ -1030,9 +1067,15 @@ let getPreparedTxsForParallelization = txsArray => {
 
     for(let transaction of txsArray){
 
-        if(Array.isArray(transaction?.payload?.touchedAccounts)){
+        let possibleTouchedAccounts = null
 
-            let eachTouchedAccountInTxHasOnePoint = transaction.payload.touchedAccounts.every(account => numberOfAccountTouchesPerAccount.get(account) === 1)
+        if(transaction.type === 'EVM_CALL') possibleTouchedAccounts = getTouchedAccountsByEvmTx(transaction.payload)
+
+        else possibleTouchedAccounts = transaction?.payload?.touchedAccounts
+
+        if(Array.isArray(possibleTouchedAccounts)){
+
+            let eachTouchedAccountInTxHasOnePoint = possibleTouchedAccounts.every(account => numberOfAccountTouchesPerAccount.get(account) === 1)
 
             if(eachTouchedAccountInTxHasOnePoint){
 
@@ -1057,9 +1100,17 @@ let getPreparedTxsForParallelization = txsArray => {
 
         let accountThatChangesMoreThanOnce
 
-        if(Array.isArray(transaction?.payload?.touchedAccounts)){
 
-            for(let accountID of transaction.payload.touchedAccounts){
+        let possibleTouchedAccounts = null
+
+        if(transaction.type === 'EVM_CALL') possibleTouchedAccounts = getTouchedAccountsByEvmTx(transaction.payload)
+
+        else possibleTouchedAccounts = transaction?.payload?.touchedAccounts
+
+
+        if(Array.isArray(possibleTouchedAccounts)){
+
+            for(let accountID of possibleTouchedAccounts){
 
                 if(numberOfAccountTouchesPerAccount.get(accountID) > 1){
     
@@ -1479,7 +1530,7 @@ let executeGroupOfTransaction = async (shardContext,currentBlockID,independentGr
 
             let txCopy = JSON.parse(JSON.stringify(txFromIndependentGroup))
     
-            let {isOk,reason,createdContractAddress,extraDataToReceipt} = await VERIFIERS[txFromIndependentGroup.type](shardContext,txCopy,rewardsAndSuccessfulTxsCollector,atomicBatch).catch(()=>({isOk:false,reason:'Unknown'}))
+            let {isOk,reason,createdContractAddress,extraDataToReceipt} = await VERIFIERS[txFromIndependentGroup.type](shardContext,txCopy,rewardsAndSuccessfulTxsCollector,atomicBatch).catch(err=>({isOk:false,reason:err}))
     
             // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
             if(reason!=='EVM'){
