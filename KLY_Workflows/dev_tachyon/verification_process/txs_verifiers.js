@@ -340,7 +340,9 @@ export let VERIFIERS = {
 
                     if(tx.payload.to.startsWith('0x') && tx.payload.to.length === 42){
 
-                        recipientAccount.balance += BigInt(amountForRecipient) * (BigInt(10) ** BigInt(18))
+                        let amountInWei = Math.round(amountForRecipient * (10 ** 18));
+
+                        recipientAccount.balance += BigInt(amountInWei);
 
                         await KLY_EVM.updateAccount(tx.payload.to,recipientAccount)
 
