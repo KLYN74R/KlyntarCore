@@ -54,7 +54,7 @@ const web3 = new Web3()
 
 global.GET_SHARD_ASSIGNMENT = async addressAsString => {
 
-    let bindedToShard = await getFromState('SHARD_BIND:'+addressAsString)
+    let bindedToShard = await getFromState('EVM_ACCOUNT:'+addressAsString)
 
     if(bindedToShard) return bindedToShard.shard
 

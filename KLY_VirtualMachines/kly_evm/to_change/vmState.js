@@ -156,7 +156,7 @@ class VmState {
 
             else {
 
-                global.ATOMIC_BATCH.put('SHARD_BIND:'+lowerCaseAddressAsStringWithout0x,{shard:this.evmContext})
+                global.ATOMIC_BATCH.put('EVM_ACCOUNT:'+lowerCaseAddressAsStringWithout0x,{shard:this.evmContext,gas:0,uno:0})
 
                 bindedToShard = this.evmContext    
 
