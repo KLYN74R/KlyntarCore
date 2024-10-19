@@ -199,7 +199,9 @@ FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
 
             let account = await KLY_EVM.getAccount(accountID).catch(()=>null)
 
-            let contractData = await BLOCKCHAIN_DATABASES.STATE.get(`EVM_CONTRACT_DATA:${accountID}`).catch(()=>false)
+            let accountEvmDataFromNativeKlyEnv = await BLOCKCHAIN_DATABASES.STATE.get(`EVM_ACCOUNT:${accountID.slice(2).toLowerCase()}`).catch(()=>null)
+
+            let contractData = await BLOCKCHAIN_DATABASES.STATE.get(`EVM_CONTRACT_DATA:${accountID}`).catch(()=>null)
 
             if(account){
 
@@ -207,12 +209,13 @@ FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
 
                 let nonce = Number(account.nonce)
 
+                let {uno,gas} = accountEvmDataFromNativeKlyEnv
 
                 if(contractData){
 
                     data = {
                         
-                        type:"contract", lang:"Solidity",  balance:balanceInKlyUnits, uno:0, gas:0,
+                        type:"contract", lang:"Solidity",  balance:balanceInKlyUnits, uno, gas,
                         
                         storages:['DEFAULT'],
                         
@@ -222,7 +225,7 @@ FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
 
                 } else {
 
-                    data = { type:"eoa", balance:balanceInKlyUnits, nonce, uno:0, gas:0}
+                    data = { type:"eoa", balance:balanceInKlyUnits, nonce, uno, gas}
     
                 }
 

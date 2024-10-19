@@ -350,7 +350,7 @@ export let VERIFIERS = {
 
                         let lowerCaseAddressAsStringWithout0x = tx.payload.to.slice(2).toLowerCase()
 
-                        atomicBatch.put(`SHARD_BIND:${lowerCaseAddressAsStringWithout0x}`,{shard:originShard})
+                        atomicBatch.put(`EVM_ACCOUNT:${lowerCaseAddressAsStringWithout0x}`,{shard:originShard,gas:0,uno:0})
 
                     } else {
 
