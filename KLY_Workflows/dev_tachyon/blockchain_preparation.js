@@ -393,7 +393,7 @@ let setGenesisToState=async()=>{
     
                 for(let evmKey of evmKeys) {
     
-                    let {isContract,balance,nonce,code,storage} = evmStateForThisShard[evmKey]
+                    let {isContract,balance,nonce,code,storage,uno,gas} = evmStateForThisShard[evmKey]
     
                     //Put KLY-EVM to KLY-EVM state db which will be used by Trie
     
