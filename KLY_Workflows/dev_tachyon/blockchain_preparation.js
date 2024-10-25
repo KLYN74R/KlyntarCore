@@ -10,7 +10,7 @@ import {customLog, pathResolve, logColors} from '../../KLY_Utils/utils.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
-import {isMyCoreVersionOld, decryptKeys} from './utils.js'
+import {isMyCoreVersionOld} from './utils.js'
 
 import level from 'level'
 
@@ -730,20 +730,5 @@ export let prepareBlockchain=async()=>{
     // Fill the FINALIZATION_STATS with the latest, locally stored data
 
     await restoreMetadataCaches()
-
-
-    //__________________________________Decrypt private key to memory of process__________________________________
-
-    await decryptKeys().then(()=>
-            
-        customLog(`Private key was decrypted successfully`,logColors.GREEN)        
-    
-    ).catch(error=>{
-    
-        customLog(`Keys decryption failed.Please,check your password carefully.In the worst case-use your decrypted keys from safezone and repeat procedure of encryption via CLI\n${error}`,logColors.RED)
- 
-        process.exit(107)
-
-    })
 
 }

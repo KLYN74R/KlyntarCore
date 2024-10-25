@@ -1,15 +1,8 @@
-import {customLog, logColors, getUtcTimestamp} from '../../KLY_Utils/utils.js'
-
 import {NODE_METADATA, WORKING_THREADS} from './blockchain_preparation.js'
 
-import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../klyn74r.js'
+import {getUtcTimestamp} from '../../KLY_Utils/utils.js'
 
-import cryptoModule from 'crypto'
-
-import readline from 'readline'
-
-
-
+import {CONFIGURATION} from '../../klyn74r.js'
 
 
 
@@ -67,55 +60,6 @@ export let isMyCoreVersionOld = threadID => WORKING_THREADS[threadID].CORE_MAJOR
 
 
 export let epochStillFresh = thread => thread.EPOCH.startTimestamp + thread.NETWORK_PARAMETERS.EPOCH_TIME > getUtcTimestamp()
-
-
-
-
-export let decryptKeys=async()=>{
-    
-    let readLineInterface = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
-
-
-    customLog(`Blockchain info \x1b[32;1m(\x1b[36;1mworkflow:${BLOCKCHAIN_GENESIS.NETWORK_WORKFLOW}[AT major version:${NODE_METADATA.CORE_MAJOR_VERSION}] / your pubkey:${CONFIGURATION.NODE_LEVEL.PUBLIC_KEY}\x1b[32;1m)`,logColors.CYAN)
-
-
-    
-    let hexSeed = await new Promise(resolve=>
-        
-        readLineInterface.question(`\n ${logColors.TIME_COLOR}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})${logColors.CLEAR}  Enter \x1b[32mpassword\x1b[0m to decrypt private key in memory of process ———> \x1b[31m`,resolve)
-        
-    )
-        
-
-    // Get 32 bytes SHA256(Password)
-
-    hexSeed = cryptoModule.createHash('sha256').update(hexSeed,'utf-8').digest('hex')
-
-    let initializationVector = Buffer.from(hexSeed.slice(32),'hex') // Get second 16 bytes for initialization vector
-
-
-    console.log('\x1b[0m')
-
-    hexSeed = hexSeed.slice(0,32) // Retrieve first 16 bytes from hash
-
-
-
-    //__________________________________________DECRYPT PRIVATE KEY____________________________________________
-
-
-    let decipher = cryptoModule.createDecipheriv('aes-256-cbc',hexSeed,initializationVector)
-    
-    CONFIGURATION.NODE_LEVEL.PRIVATE_KEY = decipher.update(CONFIGURATION.NODE_LEVEL.PRIVATE_KEY,'hex','utf8')+decipher.final('utf8')
-
-    
-    readLineInterface.close()
-
-}
-
-
-
-
-
 
 
 
