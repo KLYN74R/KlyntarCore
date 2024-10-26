@@ -48,7 +48,7 @@ export let CONTRACT = {
 
         let {targetAccount, gasAmount, action, quorumAgreements} = transaction.payload.params
 
-        if(typeof targetAccount === 'string' && typeof gasAmount === 'number' && typeof action === 'string' && typeof quorumAgreements === 'object'){
+        if(typeof targetAccount === 'string' && typeof gasAmount === 'number' && typeof action === 'string' && quorumAgreements && typeof quorumAgreements === 'object'){
 
             let accountToModifyGasAmount = await getFromState(originShard+':'+targetAccount)
 

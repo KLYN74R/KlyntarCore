@@ -164,7 +164,7 @@ let checkAggregatedLeaderRotationProofValidity = async (pubKeyOfSomePreviousLead
     */
 
     
-    if(typeof aggregatedLeaderRotationProof === 'object'){    
+    if(aggregatedLeaderRotationProof && typeof aggregatedLeaderRotationProof === 'object'){    
 
         // Check the proofs
     
@@ -225,7 +225,7 @@ export let checkAlrpChainValidity = async (firstBlockInThisEpochByPool,leadersSe
     let infoAboutFinalBlocksInThisEpoch = {}
 
 
-    if(typeof aggregatedLeaderesRotationProofsRef === 'object'){
+    if(aggregatedLeaderesRotationProofsRef && typeof aggregatedLeaderesRotationProofsRef === 'object'){
 
 
         let arrayForIteration = leadersSequence.slice(0,position).reverse() // take all the pools till position of current pool and reverse it because in optimistic case we just need to find the closest pool to us with non-zero ALRP 
@@ -239,7 +239,7 @@ export let checkAlrpChainValidity = async (firstBlockInThisEpochByPool,leadersSe
 
             let alrpForThisPool = aggregatedLeaderesRotationProofsRef[poolPubKey]
     
-            if(typeof alrpForThisPool === 'object'){
+            if(alrpForThisPool && typeof alrpForThisPool === 'object'){
 
                 let signaIsOk = dontCheckSignature || await checkAggregatedLeaderRotationProofValidity(poolPubKey,alrpForThisPool,epochFullID,oldEpochHandler)
 
@@ -756,8 +756,9 @@ let openTunnelToFetchBlocksForPool = async (poolPubKeyToOpenConnectionWith,epoch
 
                         let limit = 500 // max 500 blocks per request. Change it if you neeed
 
+                        let bothNotNull = parsedData && parsedData.afpForLatest
 
-                        if(handler && typeof parsedData === 'object' && typeof parsedData.afpForLatest === 'object' && Array.isArray(parsedData.blocks) && parsedData.blocks.length <= limit && parsedData.blocks[0]?.index === handler.hasUntilHeight+1){
+                        if(handler && bothNotNull && typeof parsedData === 'object' && typeof parsedData.afpForLatest === 'object' && Array.isArray(parsedData.blocks) && parsedData.blocks.length <= limit && parsedData.blocks[0]?.index === handler.hasUntilHeight+1){
 
                             let lastBlockInfo = GLOBAL_CACHES.STUFF_CACHE.get('GET_FINAL_BLOCK:'+poolPubKeyToOpenConnectionWith)
 

@@ -146,7 +146,7 @@ let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
                                         
                                         let blockIdInAfp = (epochHandler.id+':'+parsedData.forPoolPubkey+':'+index)
                                 
-                                        let proposedHeightIsValid = typeof afp === 'object' && hash === afp.blockHash && blockIdInAfp === afp.blockID && await verifyAggregatedFinalizationProof(afp,epochHandler)
+                                        let proposedHeightIsValid = afp && typeof afp === 'object' && hash === afp.blockHash && blockIdInAfp === afp.blockID && await verifyAggregatedFinalizationProof(afp,epochHandler)
                                 
 
                                         let firstBlockID = (epochHandler.id+':'+parsedData.forPoolPubkey+':0')

@@ -62,7 +62,7 @@ export let executeEpochEdgeTransaction = async(threadID,tx) => {
 
     */
 
-    let syncTxOverviewIsOk = typeof tx.payload?.contractID==='string' && tx.payload.contractID.length<=256 && typeof tx.payload.method==='string' && typeof tx.payload.params === 'object' && Array.isArray(tx.payload.imports)
+    let syncTxOverviewIsOk = typeof tx.payload?.contractID==='string' && tx.payload.contractID.length<=256 && typeof tx.payload.method==='string' && tx.payload.params && typeof tx.payload.params === 'object' && Array.isArray(tx.payload.imports)
 
     let filteredTransaction
 
