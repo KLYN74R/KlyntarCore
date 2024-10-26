@@ -351,8 +351,8 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
                                 // Verify EPOCH_FINALIZATION_PROOF signature and store to mapping
 
-                                let dataThatShouldBeSigned = 'EPOCH_DONE'+shardID+metadata.currentLeader+metadata.lastBlockProposition.index+metadata.lastBlockProposition.hash+metadata.afpForFirstBlock.blockHash+epochFullID
-                                
+                                let dataThatShouldBeSigned = `EPOCH_DONE:${shardID}:${metadata.currentLeader}:${metadata.lastBlockProposition.index}:${metadata.lastBlockProposition.hash}:${metadata.afpForFirstBlock.blockHash}:${epochFullID}`
+
                                 if(await verifyEd25519(dataThatShouldBeSigned,response.sig,descriptor.pubKey)) agreementsForThisShard.set(descriptor.pubKey,response.sig)
 
 

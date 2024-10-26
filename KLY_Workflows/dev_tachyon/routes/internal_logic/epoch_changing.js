@@ -247,8 +247,9 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
                         let {index,hash} = proposition.lastBlockProposition
 
-                        let dataToSign = 'EPOCH_DONE'+shardID+proposition.currentLeader+index+hash+hashOfFirstBlockByLastLeaderInThisEpoch+epochFullID
-    
+                        let dataToSign = `EPOCH_DONE:${shardID}:${proposition.currentLeader}:${index}:${hash}:${hashOfFirstBlockByLastLeaderInThisEpoch}:${epochFullID}`
+
+
                         responseStructure[shardID] = {
                                                 
                             status:'OK',
@@ -296,7 +297,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
                             
                                 // Generate EPOCH_FINALIZATION_PROOF_SIGNATURE
 
-                                let dataToSign = 'EPOCH_DONE'+shardID+proposition.currentLeader+index+hash+hashOfFirstBlockByLastLeaderInThisEpoch+epochFullID
+                                let dataToSign = `EPOCH_DONE:${shardID}:${proposition.currentLeader}:${index}:${hash}:${hashOfFirstBlockByLastLeaderInThisEpoch}:${epochFullID}`
 
                                 responseStructure[shardID] = {
                             
