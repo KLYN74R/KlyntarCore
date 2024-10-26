@@ -50,7 +50,7 @@ export let CONTRACT = {
 
         let {amountUno, action, quorumAgreements} = transaction.payload.params
 
-        if(typeof amountUno === 'number' && typeof action === 'string' && typeof quorumAgreements === 'object'){
+        if(typeof amountUno === 'number' && typeof action === 'string' && quorumAgreements && typeof quorumAgreements === 'object'){
 
             let recipientAccount = await getFromState(originShard+':'+transaction.creator)
 

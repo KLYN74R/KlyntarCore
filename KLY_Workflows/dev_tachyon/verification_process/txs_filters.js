@@ -81,7 +81,7 @@ export let TXS_FILTERS = {
     */
     WVM_CONTRACT_DEPLOY:async (tx,originShard) => {
 
-        return  typeof tx.payload?.bytecode==='string' && (tx.payload.lang==='Rust'||tx.payload.lang==='AssemblyScript') && typeof tx.payload.constructorParams === 'object'
+        return  typeof tx.payload?.bytecode==='string' && (tx.payload.lang==='Rust'||tx.payload.lang==='AssemblyScript') && tx.payload.constructorParams && typeof tx.payload.constructorParams === 'object'
                 &&
                 await overviewToCheckIfTxIsOk(tx,originShard)
 
@@ -104,7 +104,7 @@ export let TXS_FILTERS = {
     */
     WVM_CALL:async (tx,originShard) => {
 
-        return  typeof tx.payload?.contractID==='string' && tx.payload.contractID.length<=256 && typeof tx.payload.method==='string' && typeof tx.payload.params === 'object' && Array.isArray(tx.payload.imports)
+        return  typeof tx.payload?.contractID==='string' && tx.payload.contractID.length<=256 && typeof tx.payload.method==='string' && tx.payload.params && typeof tx.payload.params === 'object' && Array.isArray(tx.payload.imports)
                 &&
                 await overviewToCheckIfTxIsOk(tx,originShard)
 

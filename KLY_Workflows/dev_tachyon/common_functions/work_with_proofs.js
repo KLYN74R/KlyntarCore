@@ -21,6 +21,8 @@ export let verifyAggregatedEpochFinalizationProof = async (itsProbablyAggregated
 
     let overviewIsOK =
         
+        itsProbablyAggregatedEpochFinalizationProof
+        &&
         typeof itsProbablyAggregatedEpochFinalizationProof === 'object'
         &&
         typeof itsProbablyAggregatedEpochFinalizationProof.shard === 'string'
@@ -32,6 +34,8 @@ export let verifyAggregatedEpochFinalizationProof = async (itsProbablyAggregated
         typeof itsProbablyAggregatedEpochFinalizationProof.lastHash === 'string'
         &&
         typeof itsProbablyAggregatedEpochFinalizationProof.hashOfFirstBlockByLastLeader === 'string'
+        &&
+        itsProbablyAggregatedEpochFinalizationProof.proofs
         &&
         typeof itsProbablyAggregatedEpochFinalizationProof.proofs === 'object'
 
@@ -118,6 +122,8 @@ export let verifyAggregatedFinalizationProof = async (itsProbablyAggregatedFinal
                                     typeof itsProbablyAggregatedFinalizationProof.blockID === 'string'
                                     &&
                                     typeof itsProbablyAggregatedFinalizationProof.blockHash === 'string'
+                                    &&
+                                    itsProbablyAggregatedFinalizationProof.proofs
                                     &&
                                     typeof itsProbablyAggregatedFinalizationProof.proofs === 'object'
 

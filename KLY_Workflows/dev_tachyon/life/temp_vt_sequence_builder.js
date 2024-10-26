@@ -169,11 +169,13 @@ export let findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards=async()=>{
 
     for(let [shardID, metadata] of Object.entries(response)){
 
-        if(typeof shardID === 'string' && typeof metadata==='object'){
+        if(typeof shardID === 'string' && metadata && typeof metadata==='object'){
 
             let {proposedIndexOfLeader,firstBlockByCurrentLeader,afpForSecondBlockByCurrentLeader} = metadata
+
+            let bothNotNull = firstBlockByCurrentLeader && afpForSecondBlockByCurrentLeader
     
-            if(typeof proposedIndexOfLeader === 'number' && typeof firstBlockByCurrentLeader === 'object' && typeof afpForSecondBlockByCurrentLeader==='object'){
+            if(typeof proposedIndexOfLeader === 'number' && bothNotNull && typeof firstBlockByCurrentLeader === 'object' && typeof afpForSecondBlockByCurrentLeader==='object'){
                   
                 if(localVersionOfCurrentLeaders[shardID] <= proposedIndexOfLeader && firstBlockByCurrentLeader.index === 0){
 
