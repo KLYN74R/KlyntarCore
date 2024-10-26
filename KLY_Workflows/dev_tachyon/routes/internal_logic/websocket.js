@@ -201,7 +201,7 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
                     
                     // Since we need to verify the AEFP signed by previous quorum - take it from legacy data
                     
-                    let legacyEpochData = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`LEGACY_DATA:${epochHandler.id-1}`).catch(()=>null) // {epochFullID,quorum,majority}
+                    let legacyEpochData = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`LEGACY_DATA:${epochHandler.id-1}`).catch(()=>null) // {epochFullID,quorum,majority}                    
 
                     let aefpIsOk = epochHandler.id === 0 || legacyEpochData && await verifyAggregatedEpochFinalizationProof(
         
@@ -214,8 +214,8 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
                         legacyEpochData.epochFullID
                             
                     ).catch(()=>false) && block.extraData.aefpForPreviousEpoch.shard === shardID
-
                         
+
                     //_________________________________________2_________________________________________
                    
 

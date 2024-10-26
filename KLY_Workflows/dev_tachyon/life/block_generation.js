@@ -208,15 +208,18 @@ Ask the network in special order:
     3) Other known peers
 
 */
-let getAggregatedEpochFinalizationProofForPreviousEpoch = async shardID => {
+let getAggregatedEpochFinalizationProofForPreviousEpoch = async (shardID,epochHandler) => {
 
 
     let allKnownNodes = [CONFIGURATION.NODE_LEVEL.GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL,...await getQuorumUrlsAndPubkeys(),...getAllKnownPeers()]
 
+    let previousEpochIndex = epochHandler.id-1
+
+    let legacyEpochData = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`LEGACY_DATA:${previousEpochIndex}`).catch(()=>null) // {epochFullID,quorum,majority}
 
     // First of all - try to find it locally
 
-    let aefpProof = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${WORKING_THREADS.GENERATION_THREAD.epochIndex}:${shardID}`).catch(()=>null)
+    let aefpProof = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${previousEpochIndex}:${shardID}`).catch(()=>null)
 
     if(aefpProof) return aefpProof
 
@@ -228,7 +231,7 @@ let getAggregatedEpochFinalizationProofForPreviousEpoch = async shardID => {
 
             setTimeout(() => controller.abort(), 2000)
 
-            let finalURL = `${nodeEndpoint}/aggregated_epoch_finalization_proof/${WORKING_THREADS.GENERATION_THREAD.epochIndex}/${shardID}`
+            let finalURL = `${nodeEndpoint}/aggregated_epoch_finalization_proof/${previousEpochIndex}/${shardID}`
     
             let itsProbablyAggregatedEpochFinalizationProof = await fetch(finalURL,{signal:controller.signal}).then(r=>r.json()).catch(()=>false)
     
@@ -236,11 +239,11 @@ let getAggregatedEpochFinalizationProofForPreviousEpoch = async shardID => {
                 
                 itsProbablyAggregatedEpochFinalizationProof,
     
-                WORKING_THREADS.GENERATION_THREAD.quorum,
+                legacyEpochData.quorum,
     
-                WORKING_THREADS.GENERATION_THREAD.majority,        
+                legacyEpochData.majority,        
     
-                WORKING_THREADS.GENERATION_THREAD.epochFullId
+                legacyEpochData.epochFullID
             
             )
     
@@ -418,7 +421,7 @@ let generateBlocksPortion = async() => {
 
             if(epochIndex !== 0){
 
-                let aefpForPreviousEpoch = await getAggregatedEpochFinalizationProofForPreviousEpoch(myShardForThisEpoch)
+                let aefpForPreviousEpoch = await getAggregatedEpochFinalizationProofForPreviousEpoch(myShardForThisEpoch,epochHandler)
 
                 // If we can't find a proof - try to do it later
                 // Only in case it's initial epoch(index is -1) - no sense to push it
