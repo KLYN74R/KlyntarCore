@@ -82,7 +82,7 @@ export let CONTRACT = {
         // ...then - create a single storage for this new contract to store the body itself
         let futureRwxContractSingleStorage = transaction.payload.params
 
-        let contractID = blake3Hash(originShard+transaction.creator+transaction.nonce)
+        let contractID = `0x${blake3Hash(originShard+transaction.creator+transaction.nonce)}`
 
         
         // And put it to atomic batch to BLOCKCHAIN_DATABASES.STATE
@@ -163,7 +163,7 @@ export let CONTRACT = {
 
                 // Check if contract present in state
 
-                let rwxContractRelatedToDeal = await getFromState(rwxContractId)
+                let rwxContractRelatedToDeal = await getFromState(originShard+':'+rwxContractId)
 
                 if(rwxContractRelatedToDeal){
 
