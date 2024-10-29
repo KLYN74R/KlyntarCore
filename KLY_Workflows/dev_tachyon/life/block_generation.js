@@ -86,8 +86,6 @@ let postQuantumBlissKeypair = {
 }
 
 
-let nonces = {};
-
 let generateBatchOfMockTransactionsAndPushToMempool = async shardID => {
 
     const recipient = 'Cw4MjAsm5gRQh7JaiYXvJ9kzgt5xemhe1789kvcXY1Pz';
@@ -99,19 +97,13 @@ let generateBatchOfMockTransactionsAndPushToMempool = async shardID => {
 
         const myPrivateKey = privateKey;
 
-        let nonce = nonces[pubKey] || await getUserAccountFromState(shardID+':'+pubKey).then(acc=>{
-
-            nonces[pubKey] = acc.nonce
+        let nonce = await getUserAccountFromState(shardID+':'+pubKey).then(acc=>{
 
             return acc.nonce
 
         })
 
-
         nonce++
-
-        nonces[pubKey]++
-
 
         const fee = 0.03;
 
@@ -158,9 +150,7 @@ let generateBatchOfMockTransactionsAndPushToMempool = async shardID => {
 
     const myPrivateKey = postQuantumBlissKeypair.privateKey;
 
-    let nonce = nonces[from] || await getUserAccountFromState(shardID+':'+from).then(acc=>{
-
-        nonces[from] = acc.nonce
+    let nonce = await getUserAccountFromState(shardID+':'+from).then(acc=>{
 
         return acc.nonce
 
@@ -168,8 +158,6 @@ let generateBatchOfMockTransactionsAndPushToMempool = async shardID => {
 
 
     nonce++
-
-    nonces[from]++
 
     const fee = 0.03;
 
