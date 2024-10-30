@@ -410,26 +410,15 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
             if(!cycleWasBreak){
 
-                // Store the legacy data about this epoch that we'll need in future - epochFullID,quorum,majority
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`LEGACY_DATA:${currentEpochHandler.id}`,{
-
-                    epochFullID:currentEpochFullID,
-                    quorum:currentEpochHandler.quorum,
-                    majority
-
-                }).catch(()=>{})
-
                 // For API - store the whole epoch handler object by epoch numerical index
                 await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_HANDLER:${currentEpochHandler.id}`,currentEpochHandler).catch(()=>{})
-                                
-                // ... and delete the legacy data for previos epoch(don't need it anymore for approvements)
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`LEGACY_DATA:${currentEpochHandler.id-1}`).catch(()=>{})
 
 
                 let daoVotingContractCalls = [], slashingContractCalls = [], reduceUnoContractCalls = [], allTheRestContractCalls = []
 
                 let atomicBatch = BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.batch()
 
+                
                 for(let operation of epochEdgeTransactions){
 
                     let contractID = operation?.payload?.contractID
