@@ -203,7 +203,13 @@ let getAggregatedEpochFinalizationProofForPreviousEpoch = async (shardID,epochHa
 
     let previousEpochIndex = epochHandler.id-1
 
-    let legacyEpochData = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`LEGACY_DATA:${previousEpochIndex}`).catch(()=>null) // {epochFullID,quorum,majority}
+    let legacyEpochHandler = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_HANDLER:${previousEpochIndex}`).catch(()=>null)
+
+    let legacyEpochFullID = legacyEpochHandler.hash+"#"+legacyEpochHandler.id
+
+    let legacyMajority = await getQuorumMajority(legacyEpochHandler)
+
+    let legacyQuorum = legacyEpochHandler.quorum
 
     // First of all - try to find it locally
 
@@ -227,11 +233,11 @@ let getAggregatedEpochFinalizationProofForPreviousEpoch = async (shardID,epochHa
                 
                 itsProbablyAggregatedEpochFinalizationProof,
     
-                legacyEpochData.quorum,
+                legacyQuorum,
     
-                legacyEpochData.majority,        
+                legacyMajority,        
     
-                legacyEpochData.epochFullID
+                legacyEpochFullID
             
             )
     
