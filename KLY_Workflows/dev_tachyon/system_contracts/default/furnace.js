@@ -1,7 +1,5 @@
 import {getUserAccountFromState} from '../../common_functions/state_interactions.js'
 
-import { WORKING_THREADS } from '../../blockchain_preparation.js'
-
 
 
 
@@ -25,7 +23,6 @@ export let CONTRACT = {
 
         {
             poolPubKey:<Format is Ed25519>,
-            randomChallenge:<256-bit hex string used to prevent replay attacks>,
             amount:<amount in KLY or UNO> | NOTE:must be int - not float
             units:<KLY|UNO>
         }
@@ -35,12 +32,10 @@ export let CONTRACT = {
 
         let txCreatorAccount = await getUserAccountFromState(originShard+':'+transaction.creator)
 
-        let {poolPubKey,randomChallenge,amount,units} = transaction.payload.params
-
-        let epochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
+        let {poolPubKey,amount,units} = transaction.payload.params
 
 
-        if(txCreatorAccount && typeof poolPubKey === 'string' && typeof randomChallenge === 'string' && typeof units === 'string' && typeof amount === 'number'){
+        if(txCreatorAccount && typeof poolPubKey === 'string' && typeof units === 'string' && typeof amount === 'number'){
             
             if(units === 'kly' && amount <= txCreatorAccount.balance){
 
@@ -62,7 +57,7 @@ export let CONTRACT = {
 
             } 
 
-            return {isOk:true, extraData:{poolPubKey,recipient:transaction.creator,randomChallenge,validUntill:epochHandler.id+100,amount,units}}
+            return {isOk:true, extraData:{poolPubKey,recipient:transaction.creator,nonce:transaction.nonce,amount,units}}
 
         } else return {isOk:false, reason:'No such account or wrong input to function of contract'}
 
