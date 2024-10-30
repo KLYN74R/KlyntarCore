@@ -57,7 +57,7 @@ export let CONTRACT = {
 
             } 
 
-            return {isOk:true, extraData:{poolPubKey,recipient:transaction.creator,nonce:transaction.nonce,amount,units}}
+            return {isOk:true, extraDataToReceipt:{poolPubKey,recipient:transaction.creator,nonceFromBurnTicket:transaction.nonce,amount,units}}
 
         } else return {isOk:false, reason:'No such account or wrong input to function of contract'}
 
