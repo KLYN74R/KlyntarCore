@@ -64,7 +64,7 @@ export let CONTRACT = {
             txCreatorAccount.balance -= 0.000000001
 
 
-            return {isOk:true, extraData:{moveToShard,recipient,recipientNextNonce,amount}}
+            return {isOk:true, extraDataToReceipt:{moveToShard,recipient,recipientNextNonce,amount}}
 
 
         } else return {isOk:false, reason:'No such account or not enough balance'}

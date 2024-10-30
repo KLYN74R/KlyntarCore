@@ -608,7 +608,7 @@ export let VERIFIERS = {
                            
                             let extraDataToReceipt = resultAsJson.result ? JSON.parse(resultAsJson.result) : ''
 
-                            execResultWithStatusAndReason = {isOk:true,extraDataToReceipt} // TODO: Limit the size of <extraData> field
+                            execResultWithStatusAndReason = {isOk:true,extraDataToReceipt} // TODO: Limit the size of <extraDataToReceipt> field
         
                         } else execResultWithStatusAndReason = {isOk:false,reason:`No metadata for contract`}
         
