@@ -136,14 +136,14 @@ export let CONTRACT = {
 
     {
         poolPubKey:<Format is Ed25519_pubkey>,
-        randomChallenge,
-        amount:<amount in KLY or UNO> | NOTE:must be int - not float
-        units:<KLY|UNO>
+        amount:<amount in KLY or UNO> | NOTE:must be int - not float,
+        units:<KLY|UNO>,
+        nonceFromBurnTicket,
         quorumAgreements:{
 
-            quorumMemberPubKey1: Signature(`stake:${epochFullID}:${poolPubKey}:${transaction.creator}:${randomChallenge}:${amount}:${units}`),
+            quorumMemberPubKey1: Signature(`stake:${epochFullID}:${poolPubKey}:${transaction.creator}:${nonceFromBurnTicket}:${amount}:${units}`),
             ...
-            quorumMemberPubKeyN: Signature(`stake:${epochFullID}:${poolPubKey}:${transaction.creator}:${randomChallenge}:${amount}:${units}`)
+            quorumMemberPubKeyN: Signature(`stake:${epochFullID}:${poolPubKey}:${transaction.creator}:${nonceFromBurnTicket}:${amount}:${units}`)
 
         }
     }
@@ -152,7 +152,7 @@ export let CONTRACT = {
     
     stake:async(threadContext,transaction) => {
 
-        let {poolPubKey,randomChallenge,amount,units,quorumAgreements} = transaction.payload.params
+        let {poolPubKey,nonceFromBurnTicket,amount,units,quorumAgreements} = transaction.payload.params
 
         let poolStorage
 
@@ -174,13 +174,15 @@ export let CONTRACT = {
 
         // Verify the majority's proof
 
-        let dataThatShouldBeSignedByQuorum = `stake:${epochFullID}:${poolPubKey}:${transaction.creator}:${randomChallenge}:${amount}:${units}`
+        let dataThatShouldBeSignedByQuorum = `stake:${epochFullID}:${poolPubKey}:${transaction.creator}:${nonceFromBurnTicket}:${amount}:${units}`
 
         let majorityProofIsOk = verifyQuorumMajoritySolution(dataThatShouldBeSignedByQuorum,quorumAgreements)
 
         // Check if ticket is unspent
 
-        let stakingTicketStillUnspent = await getFromApprovementThreadState(randomChallenge)
+        let stakingTicketID = `STAKING_TIKET:${transaction.creator}:${nonceFromBurnTicket}`
+
+        let stakingTicketStillUnspent = await getFromApprovementThreadState(stakingTicketID)
 
         if(majorityProofIsOk && stakingTicketStillUnspent){
 
@@ -222,7 +224,7 @@ export let CONTRACT = {
                     // Finally, add the appropriate signal to AT storage that this staking ticket was spent
                     // Need it to prevent replay attacks when you burn asset once, but try to stake twice and more
                     
-                    GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(randomChallenge,true)
+                    GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(stakingTicketID,true)
 
                     return {isOk:true}
 

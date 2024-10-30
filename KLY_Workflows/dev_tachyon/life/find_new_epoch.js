@@ -438,9 +438,9 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                     if(contractID === 'system/dao_voting') daoVotingContractCalls.push(operation)
 
-                    else if (contractID === 'system/epoch_edge_staking_calls' && methodID === 'slashing') slashingContractCalls.push(operation)
+                    else if (contractID === 'system/staking' && methodID === 'slashing') slashingContractCalls.push(operation)
 
-                    else if (contractID === 'system/epoch_edge_staking_calls' && methodID === 'reduceAmountOfUno') reduceUnoContractCalls.push(operation)
+                    else if (contractID === 'system/staking' && methodID === 'reduceAmountOfUno') reduceUnoContractCalls.push(operation)
 
                     else allTheRestContractCalls.push(operation)
 
