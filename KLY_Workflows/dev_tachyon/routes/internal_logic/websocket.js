@@ -1,8 +1,8 @@
 import {verifyAggregatedEpochFinalizationProof, verifyAggregatedFinalizationProof} from '../../common_functions/work_with_proofs.js'
 
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
-
 import {getPseudoRandomSubsetFromQuorumByTicketId, getQuorumMajority} from '../../common_functions/quorum_related.js'
+
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
 
 import {signEd25519, verifyEd25519, logColors, customLog} from '../../../../KLY_Utils/utils.js'
 
