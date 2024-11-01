@@ -200,27 +200,37 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
                     //_________________________________________1_________________________________________
                     
                     // Since we need to verify the AEFP signed by previous quorum - take it from legacy data
-                    
-                    let legacyEpochHandler = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_HANDLER:${epochHandler.id-1}`).catch(()=>null)
 
-                    let legacyEpochFullID = legacyEpochHandler.hash+"#"+legacyEpochHandler.id
+                    let aefpIsOk = false
 
-                    let legacyMajority = await getQuorumMajority(legacyEpochHandler)
+                    if(epochHandler.id === 0){
 
-                    let legacyQuorum = legacyEpochHandler.quorum
+                        aefpIsOk = true
 
+                    } else {
 
-                    let aefpIsOk = epochHandler.id === 0 || legacyEpochHandler && await verifyAggregatedEpochFinalizationProof(
-        
-                        block.extraData.aefpForPreviousEpoch,
-                            
-                        legacyQuorum,
-                            
-                        legacyMajority,
-        
-                        legacyEpochFullID
-                            
-                    ).catch(()=>false) && block.extraData.aefpForPreviousEpoch.shard === shardID
+                        let legacyEpochHandler = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_HANDLER:${epochHandler.id-1}`).catch(()=>null)
+
+                        let legacyEpochFullID = legacyEpochHandler.hash+"#"+legacyEpochHandler.id
+    
+                        let legacyMajority = await getQuorumMajority(legacyEpochHandler)
+    
+                        let legacyQuorum = legacyEpochHandler.quorum
+    
+    
+                        aefpIsOk = epochHandler.id === 0 || legacyEpochHandler && await verifyAggregatedEpochFinalizationProof(
+            
+                            block.extraData.aefpForPreviousEpoch,
+                                
+                            legacyQuorum,
+                                
+                            legacyMajority,
+            
+                            legacyEpochFullID
+                                
+                        ).catch(()=>false) && block.extraData.aefpForPreviousEpoch.shard === shardID
+
+                    }
                         
 
                     //_________________________________________2_________________________________________

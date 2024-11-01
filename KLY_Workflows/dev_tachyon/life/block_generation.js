@@ -29,20 +29,7 @@ export let blocksGenerationProcess=async()=>{
 }
 
 
-
-
 let getTransactionsFromMempool = () => NODE_METADATA.MEMPOOL.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.TXS_LIMIT_PER_BLOCK)
-
-let getEpochEdgeTransactionsFromMempool = epochFullID => {
-
-    if(!EPOCH_METADATA_MAPPING.has(epochFullID)) return []
-
-    let epochEdgeTransactionsMempool = EPOCH_METADATA_MAPPING.get(epochFullID).EPOCH_EDGE_TRANSACTIONS_MEMPOOL
-
-    return epochEdgeTransactionsMempool.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.EPOCH_EDGE_TRANSACTIONS_LIMIT_PER_BLOCK)
-
-}
-
 
 
 
@@ -404,7 +391,7 @@ let generateBlocksPortion = async() => {
 
         // 0.Add the epoch edge transactions to block extra data
 
-        extraData.epochEdgeTransactions = getEpochEdgeTransactionsFromMempool(WORKING_THREADS.GENERATION_THREAD.epochFullId)
+        extraData.epochEdgeTransactions = []
 
         // 1.Add the extra data to block from configs(it might be your note, for instance)
 
