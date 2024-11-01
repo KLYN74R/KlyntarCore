@@ -526,11 +526,7 @@ let generateBlocksPortion = async() => {
 
         //_______________________________________FILL THE BLOCK WITH EXTRA DATA_________________________________________
 
-        // 0.Add the epoch edge transactions to block extra data
-
-        extraData.epochEdgeTransactions = []
-
-        // 1.Add the extra data to block from configs(it might be your note, for instance)
+        // 0. Add the extra data to block from configs(it might be your note, for instance)
 
         extraData.rest = {...CONFIGURATION.NODE_LEVEL.EXTRA_DATA_TO_BLOCK}
 

@@ -729,8 +729,6 @@ export let prepareBlockchain=async()=>{
         TEMP_CACHE:new Map(),  // simple key=>value mapping to be used as temporary cache for epoch
     
         FINALIZATION_STATS:new Map(), // mapping( validatorID => {index,hash,afp} ). Used to know inde/hash of last approved block by validator.
-    
-        EPOCH_EDGE_TRANSACTIONS_MEMPOOL:[],  // default mempool for epoch edge transactions
         
         SYNCHRONIZER:new Map(), // used as mutex to prevent async changes of object | multiple operations with several await's | etc.
 

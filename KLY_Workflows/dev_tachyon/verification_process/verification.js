@@ -10,7 +10,7 @@ import {getAllKnownPeers, isMyCoreVersionOld, epochStillFresh} from '../utils.js
 
 import {getFromState} from '../common_functions/state_interactions.js'
 
-import {executeEpochEdgeTransaction} from '../life/find_new_epoch.js'
+import {executeDelayedTransaction} from '../life/find_new_epoch.js'
 
 import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
 
@@ -447,10 +447,10 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
     // Get the epoch edge transactions that we need to execute
 
-    let epochEdgeTransactions = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_EDGE_TXS:${vtEpochFullID}`).catch(()=>null)
+    let delayedTransactions = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`DELAYED_TRANSACTIONS:${vtEpochFullID}`).catch(()=>null)
 
     
-    if(nextEpochHash && nextEpochQuorum && nextEpochLeadersSequences && epochEdgeTransactions){
+    if(nextEpochHash && nextEpochQuorum && nextEpochLeadersSequences && delayedTransactions){
         
         
         let atomicBatch = BLOCKCHAIN_DATABASES.STATE.batch()
@@ -459,11 +459,26 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
         //____________________________________ START TO EXECUTE EPOCH EDGE TRANSACTIONS ____________________________________
 
 
-        for(let epochEdgeTx of epochEdgeTransactions){
+        for(let delayedTransaction of delayedTransactions){
 
-            await executeEpochEdgeTransaction('VERIFICATION_THREAD',epochEdgeTx).catch(()=>{})
+            await executeDelayedTransaction('VERIFICATION_THREAD',delayedTransaction).catch(()=>{})
     
         }
+
+        // Now delete the delayed transactions array
+
+        let overPreviousEpochHandler = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_HANDLER:${vtEpochHandler.id-2}`).catch(()=>null)
+
+        if(overPreviousEpochHandler) {
+
+            for(let shardID of overPreviousEpochHandler.shardsRegistry){
+
+                atomicBatch.del(`DELAYED_TRANSACTIONS:${vtEpochHandler.id}:${shardID}`)
+
+            }
+
+        }
+
     
 
         // Nullify values for the upcoming epoch
@@ -498,7 +513,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
         GLOBAL_CACHES.STUFF_CACHE.delete('SHARDS_READY_TO_NEW_EPOCH')
 
 
-        customLog(`\u001b[38;5;154mEpoch edge transactions were executed for epoch \u001b[38;5;93m${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id} ### ${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash} (VT)\u001b[0m`,logColors.GREEN)
+        customLog(`\u001b[38;5;154mDelayed transactions were executed for epoch \u001b[38;5;93m${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id} ### ${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash} (VT)\u001b[0m`,logColors.GREEN)
 
 
         // Store the stats during verification thread work in this epoch
@@ -544,7 +559,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`EPOCH_LEADERS_SEQUENCES:${nextVtEpochIndex}`).catch(()=>{})
 
-        // await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`EPOCH_EDGE_TXS:${vtEpochFullID}`).catch(()=>{}) // decided to not to delete for API explicit information
+        // await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`DELAYED_TRANSACTIONS:${vtEpochFullID}`).catch(()=>{}) // decided to not to delete for API explicit information
 
         await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`FIRST_BLOCKS_IN_NEXT_EPOCH_PER_SHARD:${vtEpochOldIndex-1}`).catch(()=>{})
 

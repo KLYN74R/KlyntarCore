@@ -2,17 +2,15 @@ import {GRACEFUL_STOP, BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES, EPO
 
 import {getCurrentEpochQuorum, getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
+import {CONTRACT_FOR_DELAYED_TRANSACTIONS} from '../system_contracts/delayed_transactions/delayed_transactions.js'
+
 import {verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
 
 import {blake3Hash, logColors, customLog, pathResolve} from '../../../KLY_Utils/utils.js'
 
-import {verifyTxSignatureAndVersion} from '../verification_process/txs_verifiers.js'
-
-import {getUserAccountFromState} from '../common_functions/state_interactions.js'
-
 import {setLeadersSequenceForShards} from './shards_leaders_monitoring.js'
 
-import {EPOCH_EDGE_SYSTEM_CONTRACTS} from '../system_contracts/root.js'
+import {getFromState} from '../common_functions/state_interactions.js'
 
 import {getBlock} from '../verification_process/verification.js'
 
@@ -29,80 +27,25 @@ import fs from 'fs'
 
 
 
-export let executeEpochEdgeTransaction = async(threadID,tx) => {
 
 
-       /*
+export let executeDelayedTransaction = async(threadID,delayedTransaction) => {
 
-        Reminder: full tx structure is
+    /*
 
-        {
-            
-            v,
-            fee:<zero for epoch edge txs>,
-            creator:tx.creator,
-            type:<always WVM_CALL>,
-            nonce:<any, doesn't matter for epoch edge txs>,
-            payload,
-            sig
+        Reminder: Each delayed transaction has the <type> field
 
-        }
-    
-        tx.payload is
-
-        {
-
-            contractID:<BLAKE3 hashID of contract OR alias of contract>,
-            method:<string method to call>,
-            gasLimit:<maximum allowed in KLY to execute contract>,
-            params:{} params to pass to function,
-            imports:[] imports which should be included to contract instance to call. Example ['default.CROSS-CONTRACT','storage.GET_FROM_ARWEAVE']. As you understand, it's form like <MODULE_NAME>.<METHOD_TO_IMPORT>
-
-        }
+        Using this field - get the handler for appropriate function and pass the tx body inside
 
     */
 
-    let syncTxOverviewIsOk = typeof tx.payload?.contractID==='string' && tx.payload.contractID.length<=256 && typeof tx.payload.method==='string' && tx.payload.params && typeof tx.payload.params === 'object' && Array.isArray(tx.payload.imports)
-
-    let filteredTransaction
-
-    if(syncTxOverviewIsOk){
-
-        let shardOfTxCreator = tx.payload.params?.shard
-
-        let creatorAccount = await getUserAccountFromState(shardOfTxCreator+':'+tx.creator)
     
-        let result = await verifyTxSignatureAndVersion(threadID,tx,creatorAccount,shardOfTxCreator).catch(()=>false)
+    let functionHandler = CONTRACT_FOR_DELAYED_TRANSACTIONS[delayedTransaction.type]
 
-        if(result){
-        
-            filteredTransaction = {
-                
-                v:tx.v,
-                fee:0,
-                creator:tx.creator,
-                type:tx.type,
-                nonce:tx.nonce,
-                payload:tx.payload,
-                sig:tx.sig
-            
-            }
-    
-        }
 
-    }
-    
-    if(filteredTransaction && tx.payload.params){
+    if(functionHandler){
 
-        let {contractID, method} = tx.payload.params
-
-        let contractEntity = EPOCH_EDGE_SYSTEM_CONTRACTS.get(contractID)
-
-        if(contractEntity && contractEntity[method]){
-
-            await contractEntity[method](threadID,tx).catch(()=>{})
-
-        }
+        await functionHandler(threadID,delayedTransaction).catch(()=>{})
 
     }
 
@@ -183,7 +126,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                 AFP_FOR_FIRST_BLOCK.blockHash
  
 
-        6. Once we find all of them - extract EPOCH_EDGE_TRANSACTIONS from block headers and run it in a sync mode
+        6. Once we find all of them - extract the delayed operations for this epoch and run it in a sync mode
 
         7. Increment value of epoch index(epoch.id) and recount new hash(epoch.hash)
     
@@ -376,11 +319,29 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
         if(totalNumberOfShards === totalNumberOfReadyShards){
 
-            let epochEdgeTransactions = []
+            let delayedTransactionsFromAllShards = []
 
             let firstBlocksHashes = []
 
             let cycleWasBreak = false
+
+            let overPreviousEpochHandler = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_HANDLER:${currentEpochHandler.id-2}`).catch(()=>null)
+
+            if(overPreviousEpochHandler) {
+
+                for(let shardID of overPreviousEpochHandler.shardsRegistry){
+
+                    let delayedTxs = await getFromState(`DELAYED_TRANSACTIONS:${currentEpochHandler.id}:${shardID}`)
+
+                    if(delayedTxs){
+
+                        delayedTransactionsFromAllShards.push(...delayedTxs)
+
+                    }
+
+                }
+
+            }
 
             for(let [shardID] of entries){
 
@@ -389,12 +350,6 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                 let firstBlockOnThisShard = await getBlock(currentEpochHandler.id,aefpAndFirstBlockData[shardID].firstBlockCreator,0)
 
                 if(firstBlockOnThisShard && Block.genHash(firstBlockOnThisShard) === aefpAndFirstBlockData[shardID].firstBlockHash){
-
-                    if(Array.isArray(firstBlockOnThisShard.epochEdgeTransactions)){
-
-                        epochEdgeTransactions.push(...firstBlockOnThisShard.epochEdgeTransactions)
-
-                    }
 
                     firstBlocksHashes.push(aefpAndFirstBlockData[shardID].firstBlockHash)
 
@@ -411,6 +366,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
             if(!cycleWasBreak){
 
                 // For API - store the whole epoch handler object by epoch numerical index
+
                 await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_HANDLER:${currentEpochHandler.id}`,currentEpochHandler).catch(()=>{})
 
 
@@ -419,54 +375,37 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                 let atomicBatch = BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.batch()
 
                 
-                for(let operation of epochEdgeTransactions){
+                for(let delayedTransaction of delayedTransactionsFromAllShards){
 
-                    let contractID = operation?.payload?.contractID
+                    let itsDaoVoting = delayedTransaction.type === 'changeNumberOfShards' || delayedTransaction.type === 'votingAccept'
 
-                    let methodID = operation?.payload?.method
+                    let itsSlashing = delayedTransaction.type === 'slashing'
 
-                    if(contractID === 'system/dao_voting') daoVotingContractCalls.push(operation)
+                    let itsReduceUnoTx = delayedTransaction.type === 'reduceAmountOfUno'
 
-                    else if (contractID === 'system/staking' && methodID === 'slashing') slashingContractCalls.push(operation)
 
-                    else if (contractID === 'system/staking' && methodID === 'reduceAmountOfUno') reduceUnoContractCalls.push(operation)
+                    if(itsDaoVoting) daoVotingContractCalls.push(delayedTransaction)
 
-                    else allTheRestContractCalls.push(operation)
+                    else if(itsSlashing) slashingContractCalls.push(delayedTransaction)
+
+                    else if(itsReduceUnoTx) reduceUnoContractCalls.push(delayedTransaction)
+
+                    else allTheRestContractCalls.push(delayedTransaction)
 
                 }
 
 
-                let epochEdgeTransactionsOrderByPriority = daoVotingContractCalls.concat(slashingContractCalls).concat(reduceUnoContractCalls).concat(allTheRestContractCalls)
+                let delayedTransactionsOrderByPriority = daoVotingContractCalls.concat(slashingContractCalls).concat(reduceUnoContractCalls).concat(allTheRestContractCalls)
 
 
-                // Store the epoch edge transactions locally because we'll need it later(to change the epoch on VT - Verification Thread)
+                // Store the delayed transactions locally because we'll need it later(to change the epoch on VT - Verification Thread)
                 // So, no sense to grab it twice(on AT and later on VT). On VT we just get it from DB and execute these transactions(already in priority order)
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_EDGE_TXS:${currentEpochFullID}`,epochEdgeTransactions).catch(()=>false)
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`DELAYED_TRANSACTIONS:${currentEpochFullID}`,delayedTransactionsFromAllShards).catch(()=>false)
 
 
-                for(let operation of epochEdgeTransactionsOrderByPriority){
-
-                    /*
-                    
-                        operation structure is:
-
-                        {   v,
-                            fee:0,
-                            creator,
-                            type,
-                            nonce,
-                            payload:{
-
-                                contractID, method, gasLimit, params, imports, shardContext
-
-                            },
-                            sig
+                for(let delayedTransaction of delayedTransactionsOrderByPriority){
         
-                        }
-                    
-                    */
-        
-                    await executeEpochEdgeTransaction('APPROVEMENT_THREAD',operation).catch(()=>{})
+                    await executeDelayedTransaction('APPROVEMENT_THREAD',delayedTransaction).catch(()=>{})
                 
                 }
                 
@@ -499,7 +438,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                 await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_LEADERS_SEQUENCES:${nextEpochId}`,WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence).catch(()=>{})
 
 
-                customLog(`\u001b[38;5;154mEpoch edge transactions were executed for epoch \u001b[38;5;93m${currentEpochFullID} (AT)\u001b[0m`,logColors.GREEN)
+                customLog(`\u001b[38;5;154mDelayed transactions were executed for epoch \u001b[38;5;93m${currentEpochFullID} (AT)\u001b[0m`,logColors.GREEN)
 
 
                 //_______________________ Update the values for new epoch _______________________
@@ -535,8 +474,6 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                     FINALIZATION_STATS:new Map(),
 
                     TEMP_CACHE:new Map(),
-
-                    EPOCH_EDGE_TRANSACTIONS_MEMPOOL:[],
 
                     SYNCHRONIZER:new Map(),
             
