@@ -305,8 +305,6 @@ export let VERIFIERS = {
 
                     balance:0,
                     
-                    uno:0,
-                    
                     nonce:0,
 
                     gas:0
@@ -350,7 +348,7 @@ export let VERIFIERS = {
 
                         let lowerCaseAddressAsStringWithout0x = tx.payload.to.slice(2).toLowerCase()
 
-                        atomicBatch.put(`EVM_ACCOUNT:${lowerCaseAddressAsStringWithout0x}`,{shard:originShard,gas:0,uno:0})
+                        atomicBatch.put(`EVM_ACCOUNT:${lowerCaseAddressAsStringWithout0x}`,{shard:originShard,gas:0})
 
                     } else {
 
@@ -441,7 +439,6 @@ export let VERIFIERS = {
                         type:'contract',
                         lang:tx.payload.lang,
                         balance:0,
-                        uno:0,
                         gas:0,
                         storages:['DEFAULT'],
                         storageAbstractionLastPayment:WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
@@ -706,7 +703,7 @@ export let VERIFIERS = {
 
                             accountToTransfer = {
                 
-                                type:'eoa', balance:0, uno:0, nonce:0, gas:0
+                                type:'eoa', balance:0, nonce:0, gas:0
                             
                             }
                             

@@ -340,7 +340,6 @@ let setGenesisToState=async()=>{
             type:'contract',
             lang:'system/staking/sub',
             balance:0,
-            uno:0,
             gas:0,
             storages:['POOL'],
             storageAbstractionLastPayment:0
@@ -393,7 +392,7 @@ let setGenesisToState=async()=>{
     
                 for(let evmKey of evmKeys) {
     
-                    let {isContract,balance,nonce,code,storage,uno,gas} = evmStateForThisShard[evmKey]
+                    let {isContract,balance,nonce,code,storage,gas} = evmStateForThisShard[evmKey]
     
                     //Put KLY-EVM to KLY-EVM state db which will be used by Trie
     
@@ -411,7 +410,7 @@ let setGenesisToState=async()=>{
 
                     // Add assignment to shard
 
-                    verificationThreadAtomicBatch.put('EVM_ACCOUNT:'+lowerCaseAccountAddressWithoutPrefix,{shard:bindToShard,gas,uno})
+                    verificationThreadAtomicBatch.put('EVM_ACCOUNT:'+lowerCaseAccountAddressWithoutPrefix,{shard:bindToShard,gas})
 
                     if(isContract) verificationThreadAtomicBatch.put('EVM_CONTRACT_DATA:'+evmKey,{storageAbstractionLastPayment:0})
     
@@ -444,14 +443,13 @@ let setGenesisToState=async()=>{
 
             if(accountData.type === 'contract'){
 
-                let {lang,balance,uno,gas,storages,bytecode,storageAbstractionLastPayment,shard} = accountData
+                let {lang,balance,gas,storages,bytecode,storageAbstractionLastPayment,shard} = accountData
 
                 let contractMeta = {
 
                     type:'contract',
                     lang,
                     balance,
-                    uno,
                     gas,
                     storages,
                     storageAbstractionLastPayment

@@ -87,7 +87,7 @@ export default {
    * @param {String} aggregatedPubkeyWhoSignAsHexWith0x - an aggregated BLS pubkey of users who signed message,so can aggregate their pubkeys into a single one
    * @param {Array} afkPubkeysArray - the rest of addresses which are in general pubkey,but don't take part in this round
    * @param {String} rootPubKey  - aggregated general(master) pubkey which includes all previously reminded addresses
-   * @param {String} msg - message to be signed. It might be transaction,random message, Unobtanium freeze, some service logic and so on
+   * @param {String} msg - message to be signed
    * @param {String} aggregatedSignatureAsHex - aggregated signature received from <pubKeysIn> signatures
    * @param {Number} reverseThreshold - number of signers allowed to be afk
    * 

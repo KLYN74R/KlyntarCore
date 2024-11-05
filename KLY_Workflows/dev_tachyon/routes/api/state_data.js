@@ -187,7 +187,7 @@ FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
 
             data = {
                         
-                type:"contract", lang:`system/${accountID}`,  balance:0, uno:0, gas:0,
+                type:"contract", lang:`system/${accountID}`,  balance:0, gas:0,
                 
                 storages:[],
                 
@@ -209,13 +209,13 @@ FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
 
                 let nonce = Number(account.nonce)
 
-                let {uno,gas} = accountEvmDataFromNativeKlyEnv
+                let {gas} = accountEvmDataFromNativeKlyEnv
 
                 if(contractData){
 
                     data = {
                         
-                        type:"contract", lang:"Solidity",  balance:balanceInKlyUnits, uno, gas,
+                        type:"contract", lang:"Solidity",  balance:balanceInKlyUnits, gas,
                         
                         storages:['DEFAULT'],
                         
@@ -225,7 +225,7 @@ FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
 
                 } else {
 
-                    data = { type:"eoa", balance:balanceInKlyUnits, nonce, uno, gas}
+                    data = { type:"eoa", balance:balanceInKlyUnits, nonce, gas}
     
                 }
 

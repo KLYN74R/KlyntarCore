@@ -1463,9 +1463,7 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
 
         // Iteration over the stakerPubKey = <any of supported pubkeys>     |       stakerMetadata = {kly,uno,reward}
 
-        let stakerTotalPower = stakerMetadata.uno + stakerMetadata.kly
-
-        let totalStakerPowerPercent = stakerTotalPower / mainStorageOfBlockCreator.totalPower
+        let totalStakerPowerPercent = stakerMetadata.kly / mainStorageOfBlockCreator.totalStakedKly
 
         let stakerAccountForReward = mainStorageOfBlockCreator.stakers[stakerPubKey]
 

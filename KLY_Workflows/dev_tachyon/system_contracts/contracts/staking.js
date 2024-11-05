@@ -17,8 +17,6 @@ export let gasUsedByMethod=methodID=>{
 
     else if(methodID==='slashing') return 10000
 
-    else if(methodID==='reduceAmountOfUno') return 10000
-
 }
 
 
@@ -96,8 +94,7 @@ export let CONTRACT = {
 
     {
         poolPubKey:<Format is Ed25519_pubkey>,
-        amount:<amount in KLY or UNO> | NOTE:must be int - not float,
-        units:<KLY|UNO>
+        amount:<amount in KLY>
     }
     
     */
@@ -106,27 +103,17 @@ export let CONTRACT = {
 
         let txCreatorAccount = await getUserAccountFromState(originShard+':'+transaction.creator)
 
-        let {poolPubKey,amount,units} = transaction.payload.params
+        let {poolPubKey,amount} = transaction.payload.params
 
-        if(txCreatorAccount && typeof poolPubKey === 'string' && typeof units === 'string' && typeof amount === 'number'){
+        if(txCreatorAccount && typeof poolPubKey === 'string' && typeof amount === 'number'){
             
-            if(units === 'kly' && amount <= txCreatorAccount.balance){
+            if(amount <= txCreatorAccount.balance){
 
                 amount = Number(amount.toFixed(9))
 
                 txCreatorAccount.balance -= amount
 
                 txCreatorAccount.balance -= 0.000000001
-
-            } 
-
-            else if (units === 'uno' && amount <= txCreatorAccount.uno){
-
-                amount = Number(amount.toFixed(9))
-
-                txCreatorAccount.uno -= amount
-
-                txCreatorAccount.uno -= 0.000000001
 
             }
 
@@ -148,7 +135,7 @@ export let CONTRACT = {
 
                 staker: transaction.creator,
 
-                poolPubKey,amount,units
+                poolPubKey, amount
 
             }
 
@@ -171,8 +158,7 @@ export let CONTRACT = {
 
     {
         poolPubKey:<Format is Ed25519_pubkey>,
-        amount:<amount in KLY or UNO> | NOTE:must be int - not float,
-        units:<KLY|UNO>
+        amount:<amount in KLY>
     }
     
     */
@@ -180,9 +166,9 @@ export let CONTRACT = {
 
         let txCreatorAccount = await getUserAccountFromState(originShard+':'+transaction.creator)
 
-        let {poolPubKey,amount,units} = transaction.payload.params
+        let {poolPubKey,amount} = transaction.payload.params
 
-        if(txCreatorAccount && typeof poolPubKey === 'string' && typeof units === 'string' && typeof amount === 'number'){
+        if(txCreatorAccount && typeof poolPubKey === 'string' && typeof amount === 'number'){
 
             // Now add it to delayed operations
 
@@ -202,7 +188,7 @@ export let CONTRACT = {
 
                 unstaker: transaction.creator,
 
-                poolPubKey,amount,units
+                poolPubKey, amount
 
             }
 
@@ -269,11 +255,6 @@ export let CONTRACT = {
 
     
     // slashing:async(originShard,transaction) => {
-
-
-    // },
-
-    // reduceAmountOfUno:async(originShard,transaction) => {
 
 
     // }
