@@ -57,84 +57,7 @@ export let executeDelayedTransaction = async(threadID,delayedTransaction) => {
 
 export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
-
-    //_________________________FIND THE NEXT EPOCH AND EXECUTE EPOCH EDGE TRANSACTIONS INSTANTLY_____________________________
-
-    /*
     
-
-        1. Check if new epoch must be started(new day by default)
-
-        2. Try to find AEFPs(Aggregated Epoch Finalization Proofs) for each of shards by calling GET /aggregated_epoch_finalization_proof/:EPOCH_INDEX/:SHARD_ID
-
-            Reminder - the structure of AEFP must be:
-
-                {
-
-                    shard,
-
-                    lastLeader,
-                    
-                    lastIndex,
-                    
-                    lastHash,
-
-                    hashOfFirstBlockByLastLeader,
-
-                    proofs:{
-
-                        ed25519PubKey0:ed25519Signa0,
-                        ...
-                        ed25519PubKeyN:ed25519SignaN
-                         
-                    }
-                
-                }
-
-                Data that must be signed by 2/3N+1 => 'EPOCH_DONE'+shard+lastLeader+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullID
-
-        3. Once we find the AEFPs for ALL the shards - it's a signal to start to find the first X blocks in current epoch for each shard
-
-            We'll use 1 option for this:
-
-                [*] WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.MAX_NUM_OF_BLOCKS_PER_SHARD_FOR_SYNC_OPS - 1 by default. Don't change it
-                
-                    This value shows how many first blocks we need to get to extract epoch edge transactions to execute before move to next epoch
-                    
-                    Epoch edge transactions used mostly for staking/unstaking operations, to change network params(e.g. epoch time, minimal stake,etc.)
- 
-            
-        4. Now try to find our own assumption about the first block in epoch locally
-
-            For this, iterate over leaders sequences for shards:
-            
-            
-            for(shardID of shards){
-
-                Try to find first block created by other pools on this shard
-
-                for(pool of leadersSequence[shardID])
-
-            }
-                        
-            and try to find AFP_FOR_FIRST_BLOCK => await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:epochID:PubKey:0').catch(()=>false)
-
-            If we can't get it - make call to GET /aggregated_finalization_proof/:BLOCK_ID to quorum members
-
-            In case we have AFP for the first block(with index 0) - it's a clear proof that block 0 is 100% accepted by network and we can get the hash of first block from here:
-
-                AFP_FOR_FIRST_BLOCK.blockHash
- 
-
-        6. Once we find all of them - extract the delayed operations for this epoch and run it in a sync mode
-
-        7. Increment value of epoch index(epoch.id) and recount new hash(epoch.hash)
-    
-        8. Prepare new object in TEMP(epochFullID) and set new version of epoch on AT
-    
-    
-    */
-
     if(!epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)){
 
         let currentEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
@@ -151,8 +74,6 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
     
         }
 
-
-        // let numberOfFirstBlocksToFetchFromEachShard = WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.MAX_NUM_OF_BLOCKS_PER_SHARD_FOR_SYNC_OPS
 
         let totalNumberOfShards = 0
 
@@ -370,7 +291,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                 await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_HANDLER:${currentEpochHandler.id}`,currentEpochHandler).catch(()=>{})
 
 
-                let daoVotingContractCalls = [], slashingContractCalls = [], reduceUnoContractCalls = [], allTheRestContractCalls = []
+                let daoVotingContractCalls = [], slashingContractCalls = [], changeUnobtaniumAmountCalls = [], allTheRestContractCalls = []
 
                 let atomicBatch = BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.batch()
 
@@ -381,21 +302,21 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                     let itsSlashing = delayedTransaction.type === 'slashing'
 
-                    let itsReduceUnoTx = delayedTransaction.type === 'reduceAmountOfUno'
+                    let itsUnoChangingTx = delayedTransaction.type === 'changeUnobtaniumAmount'
 
 
                     if(itsDaoVoting) daoVotingContractCalls.push(delayedTransaction)
 
                     else if(itsSlashing) slashingContractCalls.push(delayedTransaction)
 
-                    else if(itsReduceUnoTx) reduceUnoContractCalls.push(delayedTransaction)
+                    else if(itsUnoChangingTx) changeUnobtaniumAmountCalls.push(delayedTransaction)
 
                     else allTheRestContractCalls.push(delayedTransaction)
 
                 }
 
 
-                let delayedTransactionsOrderByPriority = daoVotingContractCalls.concat(slashingContractCalls).concat(reduceUnoContractCalls).concat(allTheRestContractCalls)
+                let delayedTransactionsOrderByPriority = daoVotingContractCalls.concat(slashingContractCalls).concat(changeUnobtaniumAmountCalls).concat(allTheRestContractCalls)
 
 
                 // Store the delayed transactions locally because we'll need it later(to change the epoch on VT - Verification Thread)

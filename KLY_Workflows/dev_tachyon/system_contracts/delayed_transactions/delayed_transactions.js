@@ -39,7 +39,6 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
                 type:'contract',
                 lang:'system/staking/sub',
                 balance:0,
-                uno:0,
                 gas:0,
                 storages:['POOL'],
                 storageAbstractionLastPayment:0
@@ -52,7 +51,9 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                 overStake,
 
-                totalPower:0,
+                totalStakedKly:55000,
+
+                totalStakedUno: 0,
 
                 shard: originShard,
 
@@ -64,7 +65,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             }
 
-            // Add the pool creator to stakers, but with zero amount of assets => {kly:0,uno:0}
+            // Add the pool creator to stakers, but with zero amount of assets => {kly:0,uno:0,reward:0}
             // We need it to send rewards to this special address
 
             onlyOnePossibleStorageForStakingContract.stakers[creator] = {kly:0,uno:0,reward:0}
@@ -105,13 +106,13 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
         staker: transaction.creator,
 
-        poolPubKey,amount,units
+        poolPubKey,amount
     }
     
     */
     stake:async(threadContext,delayedTransaction) => {
 
-        let {staker,poolPubKey,amount,units} = delayedTransaction
+        let {staker,poolPubKey,amount} = delayedTransaction
 
         let poolStorage
 
@@ -137,7 +138,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             let amountIsBiggerThanMinimalStake = amount >= threadById.NETWORK_PARAMETERS.MINIMAL_STAKE_PER_ENTITY
 
-            let noOverstake = poolStorage.totalPower+poolStorage.overStake >= poolStorage.totalPower + amount
+            let noOverstake = poolStorage.totalStakedKly + poolStorage.overStake >= poolStorage.totalStakedKly + amount
 
             // Here we also need to check if pool is still not fullfilled
 
@@ -145,23 +146,13 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                 if(!poolStorage.stakers[staker]) poolStorage.stakers[staker] = {kly:0, uno:0, reward:0}
 
-                if(units === 'kly'){
+                poolStorage.stakers[staker].kly += amount
 
-                    poolStorage.stakers[staker].kly += amount
-
-                    poolStorage.totalPower += amount
-
-                } else {
-
-                    poolStorage.stakers[staker].uno += amount
-
-                    poolStorage.totalPower += amount
-
-                }
+                poolStorage.totalStakedKly += amount
 
                 // Check if pool has enough power to be added to pools registry
 
-                if(poolStorage.totalPower >= threadById.NETWORK_PARAMETERS.VALIDATOR_STAKE && !threadById.EPOCH.poolsRegistry.includes(poolPubKey)){
+                if(poolStorage.totalStakedKly >= threadById.NETWORK_PARAMETERS.VALIDATOR_STAKE && !threadById.EPOCH.poolsRegistry.includes(poolPubKey)){
 
                     threadById.EPOCH.poolsRegistry.push(poolPubKey)
 
@@ -182,25 +173,11 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             if(txCreatorAccount){
 
-                if(units === 'kly'){
+                amount = Number(amount.toFixed(9))
+    
+                txCreatorAccount.balance += amount
 
-                    amount = Number(amount.toFixed(9))
-    
-                    txCreatorAccount.balance += amount
-    
-                    txCreatorAccount.balance -= 0.000000001
-    
-                } 
-    
-                else if (units === 'uno'){
-    
-                    amount = Number(amount.toFixed(9))
-    
-                    txCreatorAccount.uno += amount
-    
-                    txCreatorAccount.uno -= 0.000000001
-    
-                }
+                txCreatorAccount.balance -= 0.000000001
 
             }
 
@@ -220,13 +197,13 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
         unstaker: transaction.creator,
 
-        poolPubKey,amount,units
+        poolPubKey,amount
     }
     
     */
     unstake:async (threadContext,delayedTransaction) => {
 
-        let {unstaker,poolPubKey,amount,units} = delayedTransaction
+        let {unstaker,poolPubKey,amount} = delayedTransaction
 
         let poolStorage
 
@@ -245,7 +222,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
         }
 
-        if(poolStorage && (units === 'kly' || units === 'uno')){
+        if(poolStorage){
 
             let unstakerAccount = poolStorage.stakers[unstaker]
 
@@ -253,13 +230,13 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                 let threadById = threadContext === 'APPROVEMENT_THREAD' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
 
-                if(unstakerAccount[units] >= amount){
+                if(unstakerAccount.kly >= amount){
 
-                    unstakerAccount[units] -= amount
+                    unstakerAccount.kly -= amount
 
-                    poolStorage.totalPower -= amount
+                    poolStorage.totalStakedKly -= amount
 
-                    if(unstakerAccount.kly === 0 && unstakerAccount.uno === 0){
+                    if(unstakerAccount.kly === 0){
 
                         delete poolStorage.stakers[unstaker] // just to make pool storage more clear
 
@@ -273,25 +250,11 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
     
                         if(unstakerAccount){
     
-                            if(units === 'kly'){
+                            amount = Number(amount.toFixed(9))
 
-                                amount = Number(amount.toFixed(9))
+                            unstakerAccount.balance += amount
 
-                                unstakerAccount.balance += amount
-
-                                unstakerAccount.balance -= 0.000000001
-
-                            }
-    
-                            else if(units === 'uno'){
-
-                                amount = Number(amount.toFixed(9))
-
-                                unstakerAccount.uno += amount
-
-                                unstakerAccount.uno -= 0.000000001
-
-                            }
+                            unstakerAccount.balance -= 0.000000001
     
                         }
     
@@ -301,7 +264,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                 // Check if pool has not enough power to be at pools registry
 
-                if(poolStorage.totalPower < threadById.NETWORK_PARAMETERS.VALIDATOR_STAKE && threadById.EPOCH.poolsRegistry.includes(poolPubKey)){
+                if(poolStorage.totalStakedKly < threadById.NETWORK_PARAMETERS.VALIDATOR_STAKE && threadById.EPOCH.poolsRegistry.includes(poolPubKey)){
 
                     // Remove from registry
 
@@ -372,7 +335,9 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
     },
 
-    reduceAmountOfUno:async(threadContext,transaction) => {
+
+    changeUnobtaniumAmount:async (threadContext,delayedTransaction)=>{
+
 
 
     }

@@ -122,19 +122,7 @@ export let CONTRACT = {
 
         if(!txCreatorAccount){
 
-            txCreatorAccount = {
-                
-                type:'eoa',
-
-                balance:0,
-                
-                uno:0,
-                
-                nonce:0,
-
-                gas:0
-            
-            }
+            txCreatorAccount = { type:'eoa', balance:0, nonce:0, gas:0 }
 
             GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+transaction.creator)
 

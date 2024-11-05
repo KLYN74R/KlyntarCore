@@ -72,7 +72,6 @@ export let CONTRACT = {
             type:'contract',
             lang:'system/rwx/sub',
             balance:0,
-            uno:0,
             gas:0,
             storages:['DEFAULT'],
             storageAbstractionLastPayment:-1

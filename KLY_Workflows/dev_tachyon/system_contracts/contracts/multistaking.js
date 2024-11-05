@@ -15,7 +15,7 @@ export let gasUsedByMethod=methodID=>{
 export let CONTRACT = {
 
 
-    // Change the UNO amount on specific account on some shard in case majority of quorum voted for it
+    // Change the UNO(staking points) amount for specific pool in case majority of quorum voted for it
 
     changeUnobtaniumAmount:async (originShard,transaction)=>{
 
