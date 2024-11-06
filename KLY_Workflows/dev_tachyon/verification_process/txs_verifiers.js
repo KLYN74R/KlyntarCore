@@ -70,6 +70,143 @@ let getFunctionsToInject = (arrayOfImports,contractHandlerToBind) => {
 
 
 
+
+let performStakingActionsForEVM = async (originShard,txCreator,transferValue,parsedData) => {
+
+
+    /*
+                        
+        We should pass data like this:
+
+        {
+
+            contractID'system/staking',
+                                
+            method:'stake | unstake | getRewardFromPool',
+
+            poolPubKey:<Format is Ed25519_pubkey>, | null
+                                
+            amount:<amount in KLY>, | null
+
+            poolToGetRewardsFrom:<Format is Ed25519_pubkey> | null
+                            
+        }
+                        
+    */
+
+    let {method,poolPubKey,amount,poolToGetRewardsFrom} = parsedData
+
+
+    if(method === 'stake'){
+
+        if(typeof poolPubKey === 'string' && typeof amount === 'number' && amount === transferValue){
+            
+            // Now add it to delayed operations
+
+            let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
+
+            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
+
+            if(!Array.isArray(delayedTransactions)){
+
+                delayedTransactions = []
+
+            }
+
+            let templateToPush = {
+
+                type:'stake',
+
+                staker: txCreator,
+
+                poolPubKey, amount
+
+            }
+
+            delayedTransactions.push(templateToPush)
+
+            GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
+
+            return {isOk:true,reason:'EVM'}
+
+        } else return {isOk:false, reason: `EVM`}
+
+    } else if(method === 'unstake') {
+
+        if(typeof poolPubKey === 'string' && typeof amount === 'number'){
+
+            // Now add it to delayed operations
+
+            let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
+
+            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
+
+            if(!Array.isArray(delayedTransactions)){
+
+                delayedTransactions = []
+
+            }
+
+            let templateToPush = {
+
+                type:'unstake',
+
+                unstaker: txCreator,
+
+                poolPubKey, amount
+
+            }
+
+            delayedTransactions.push(templateToPush)
+
+            GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
+
+            return {isOk:true,reason:'EVM'}
+
+        } else return {isOk:false, reason: `EVM`}
+
+    } else if(method === 'getRewardFromPool'){
+
+        if(typeof poolToGetRewardsFrom === 'string'){
+
+            // Now add it to delayed operations
+
+            let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
+
+            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
+
+            if(!Array.isArray(delayedTransactions)){
+
+                delayedTransactions = []
+
+            }
+
+            let templateToPush = {
+
+                type:'getRewardFromPool',
+
+                rewardRecipient: txCreator,
+
+                poolToGetRewardsFrom
+
+
+            }
+
+            delayedTransactions.push(templateToPush)
+
+            GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
+
+            return {isOk:true,reason:'EVM'}
+
+        } else return {isOk:false, reason: `EVM`}
+
+    }
+
+}
+
+
+
+
 let trackTransactionsList=async(originShard,txid,txType,sigType,fee,touchedAccounts)=>{
 
     // Function to allow to fill the list of transaction per address
@@ -670,6 +807,8 @@ export let VERIFIERS = {
 
                 let {tx,receipt} = possibleReceipt
 
+                let returnToReceipt
+
                 atomicBatch.put('TX:'+tx.hash,{tx,receipt,originShard})
 
                 let propsedFee = Number(web3.utils.fromWei((tx.gasLimit * tx.gasPrice).toString(),'ether'))
@@ -690,10 +829,40 @@ export let VERIFIERS = {
                 if(tx.to === CONFIGURATION.KLY_EVM.connectorAddress){
 
                     let parsedData = JSON.parse(web3.utils.hexToAscii(tx.data))
+                    
+                    // In case it's staking/unstaking
 
-                    if(Array.isArray(parsedData.touchedAccounts) && !parsedData.touchedAccounts.includes(parsedData.to)) return {isOk:false,reason:'EVM'}
+                    let transferValue = Number(web3.utils.fromWei(tx.value,'ether'))
 
-                    if(parsedData.to){
+                    if(parsedData.contractID === 'system/staking'){
+
+                        /*
+                        
+                            We should pass data like this:
+
+                            {
+
+                                contractID'system/staking',
+                                
+                                method:'stake | unstake | getRewardFromPool',
+
+                                poolPubKey:<Format is Ed25519_pubkey>, | null
+                                
+                                amount:<amount in KLY>, | null
+
+                                poolToGetRewardsFrom:<Format is Ed25519_pubkey> | null
+                            
+                            }
+                        
+                        */
+                        
+                        returnToReceipt = await performStakingActionsForEVM(originShard,tx.from,transferValue,parsedData)
+
+                    
+                    } else if(parsedData.to){
+
+                        if(Array.isArray(parsedData.touchedAccounts) && !parsedData.touchedAccounts.includes(parsedData.to)) return {isOk:false,reason:'EVM'}
+
 
                         let accountToTransfer = await getUserAccountFromState(originShard+':'+parsedData.to)
 
@@ -729,7 +898,7 @@ export let VERIFIERS = {
 
                 trackTransactionsList(originShard,tx.hash,'EVM_CALL','ECDSA',propsedFee,touchedAccounts)
 
-                return {isOk:true,reason:'EVM'}
+                return returnToReceipt || {isOk:true,reason:'EVM'}
 
             }else return {isOk:false,reason:'EVM'}
 
