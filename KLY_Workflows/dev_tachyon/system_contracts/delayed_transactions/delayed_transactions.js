@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 
+import { KLY_EVM } from "../../../../KLY_VirtualMachines/kly_evm/vm.js"
 import { BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS } from "../../blockchain_preparation.js"
 
 import { getFromApprovementThreadState } from "../../common_functions/approvement_thread_related.js"
@@ -106,7 +107,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
         staker: transaction.creator,
 
-        poolPubKey,amount
+        poolPubKey, amount
     }
     
     */
@@ -169,15 +170,32 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             // Return the stake 
 
-            let txCreatorAccount = await getUserAccountFromState(shardWherePoolStorageLocated+':'+staker)
+            if(staker.startsWith('0x') && staker.length === 42){
 
-            if(txCreatorAccount){
+                // Return the stake back tp EVM account
 
-                amount = Number(amount.toFixed(9))
+                let amountInWei = Math.round(amount * (10 ** 18))
+
+                let recipientAccount = await KLY_EVM.getAccount(staker)
+
+                recipientAccount.balance += BigInt(amountInWei)
+
+                await KLY_EVM.updateAccount(staker,recipientAccount)
+
+
+            } else {
+
+                let txCreatorAccount = await getUserAccountFromState(shardWherePoolStorageLocated+':'+staker)
+
+                if(txCreatorAccount){
     
-                txCreatorAccount.balance += amount
-
-                txCreatorAccount.balance -= 0.000000001
+                    amount = Number(amount.toFixed(9))
+        
+                    txCreatorAccount.balance += amount
+    
+                    txCreatorAccount.balance -= 0.000000001
+    
+                }    
 
             }
 
@@ -197,7 +215,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
         unstaker: transaction.creator,
 
-        poolPubKey,amount
+        poolPubKey, amount
     }
     
     */
@@ -245,17 +263,35 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
                     if(threadContext === 'VERIFICATION_THREAD'){
 
                         // Pay back to staker
-    
-                        let unstakerAccount = await getFromState(shardWherePoolStorageLocated+':'+unstaker)
-    
-                        if(unstakerAccount){
-    
-                            amount = Number(amount.toFixed(9))
 
-                            unstakerAccount.balance += amount
 
-                            unstakerAccount.balance -= 0.000000001
+                        if(unstaker.startsWith('0x') && unstaker.length === 42){
+
+                            // Return the stake back tp EVM account
+            
+                            let amountInWei = Math.round(amount * (10 ** 18))
+            
+                            let unstakerEvmAccount = await KLY_EVM.getAccount(unstaker)
+            
+                            unstakerEvmAccount.balance += BigInt(amountInWei)
+            
+                            await KLY_EVM.updateAccount(unstaker,unstakerEvmAccount)
+            
+            
+                        } else {
+
+                            let unstakerAccount = await getFromState(shardWherePoolStorageLocated+':'+unstaker)
     
+                            if(unstakerAccount){
+        
+                                amount = Number(amount.toFixed(9))
+    
+                                unstakerAccount.balance += amount
+    
+                                unstakerAccount.balance -= 0.000000001
+        
+                            }    
+
                         }
     
                     }    
