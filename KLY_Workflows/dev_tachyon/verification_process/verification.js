@@ -512,6 +512,8 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         }
 
+
+        // Unlock the coins and distribute to appropriate accounts
     
 
         // Nullify values for the upcoming epoch
