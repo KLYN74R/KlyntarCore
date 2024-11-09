@@ -325,53 +325,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
     },
 
 
-    /*
-
-    delayedTransaction is:
-
-    {
-        type:'getRewardFromPool',
-
-        rewardRecipient: transaction.creator,
-
-        poolToGetRewardsFrom
-    }
     
-    */
-    getRewardFromPool:async(threadContext,delayedTransaction) => {
-
-        let {rewardRecipient,poolToGetRewardsFrom} = delayedTransaction
-
-        if(threadContext === 'VERIFICATION_THREAD'){
-
-            let shardWherePoolStorageLocated = await getFromState(poolToGetRewardsFrom+'(POOL)_POINTER').catch(()=>null)
-
-            let poolStorage = await getFromState(shardWherePoolStorageLocated+':'+poolToGetRewardsFrom+'(POOL)_STORAGE_POOL').catch(()=>null)
-    
-            // You will be rewarded on the same shard where you made a stake on pool
-    
-            let accountOfStakerToReceiveRewards = await getFromState(shardWherePoolStorageLocated+':'+rewardRecipient).catch(()=>null)
-
-            
-            if(poolStorage && accountOfStakerToReceiveRewards && poolStorage.stakers[rewardRecipient]){
-
-                let forReward = Number(poolStorage.stakers[delayedTransaction.creator].reward.toFixed(9))
-
-                accountOfStakerToReceiveRewards.balance += forReward
-
-                accountOfStakerToReceiveRewards.balance -= 0.000000001
-
-                poolStorage.stakers[delayedTransaction.creator].reward = 0
-
-                return {isOk:true}
-
-            } else return {isOk:false,reason:`Impossbile to unstake because tx.creator not a staker or pool does not exist`}
-
-        }
-
-    },
-
-
     changeUnobtaniumAmount:async (threadContext,delayedTransaction)=>{
 
 
