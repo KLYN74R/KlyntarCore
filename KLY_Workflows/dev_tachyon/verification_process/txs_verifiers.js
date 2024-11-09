@@ -92,7 +92,7 @@ let performStakingActionsForEVM = async (originShard,txCreator,transferValue,par
                         
     */
 
-    let {method,poolPubKey,amount,poolToGetRewardsFrom} = parsedData
+    let {method,poolPubKey,amount} = parsedData
 
 
     if(method === 'stake'){
@@ -152,41 +152,6 @@ let performStakingActionsForEVM = async (originShard,txCreator,transferValue,par
                 unstaker: txCreator,
 
                 poolPubKey, amount
-
-            }
-
-            delayedTransactions.push(templateToPush)
-
-            GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
-
-            return {isOk:true,reason:'EVM'}
-
-        } else return {isOk:false, reason: `EVM`}
-
-    } else if(method === 'getRewardFromPool'){
-
-        if(typeof poolToGetRewardsFrom === 'string'){
-
-            // Now add it to delayed operations
-
-            let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
-
-            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
-
-            if(!Array.isArray(delayedTransactions)){
-
-                delayedTransactions = []
-
-            }
-
-            let templateToPush = {
-
-                type:'getRewardFromPool',
-
-                rewardRecipient: txCreator,
-
-                poolToGetRewardsFrom
-
 
             }
 
@@ -842,13 +807,11 @@ export let VERIFIERS = {
 
                                 contractID'system/staking',
                                 
-                                method:'stake | unstake | getRewardFromPool',
+                                method:'stake | unstake,
 
-                                poolPubKey:<Format is Ed25519_pubkey>, | null
+                                poolPubKey:<Format is Ed25519_pubkey>,
                                 
-                                amount:<amount in KLY>, | null
-
-                                poolToGetRewardsFrom:<Format is Ed25519_pubkey> | null
+                                amount:<amount in KLY>
                             
                             }
                         
