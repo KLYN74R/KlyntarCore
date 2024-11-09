@@ -481,6 +481,58 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
 
         // Unlock the coins and distribute to appropriate accounts
+
+        // Distribute rewards
+        
+        for(let leadersArray of Object.values(vtEpochHandler.leadersSequence)){
+
+            // Now iterate over pools who participated in blocks generation process
+
+            for(let leaderPubKey of leadersArray){
+
+                let shardWherePoolStorageLocated = await getFromState(leaderPubKey+'(POOL)_POINTER').catch(()=>null)
+
+                let poolStorage = await getFromState(shardWherePoolStorageLocated+':'+leaderPubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
+    
+                if(poolStorage){
+
+                    for(let stakerPubKey of Object.keys(poolStorage)){
+
+
+                        if(stakerPubKey.startsWith('0x') && stakerPubKey.length === 42){
+
+                            // Return the stake back tp EVM account
+            
+                            let rewardInWei = Math.round(poolStorage.stakers[stakerPubKey].reward * (10 ** 18))
+            
+                            let unstakerEvmAccount = await KLY_EVM.getAccount(stakerPubKey)
+              
+                            unstakerEvmAccount.balance += BigInt(rewardInWei)
+              
+                            await KLY_EVM.updateAccount(stakerPubKey,unstakerEvmAccount)
+
+                        } else {
+
+                            let accountOfStakerToReceiveRewards = await getFromState(shardWherePoolStorageLocated+':'+stakerPubKey).catch(()=>null)
+
+                            let forReward = Number(poolStorage.stakers[stakerPubKey].reward.toFixed(9))
+
+                            accountOfStakerToReceiveRewards.balance += forReward
+            
+                            accountOfStakerToReceiveRewards.balance -= 0.000000001
+            
+                            poolStorage.stakers[stakerPubKey].reward = 0
+            
+
+                        }
+
+                    }
+
+                }
+
+            }
+
+        }
     
 
         // Nullify values for the upcoming epoch

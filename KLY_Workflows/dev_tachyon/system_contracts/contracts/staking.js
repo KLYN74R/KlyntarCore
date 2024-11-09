@@ -201,58 +201,7 @@ export let CONTRACT = {
         } else return {isOk:false, reason: `Failed with input verification`}
  
     },
-
-
-    /*
-
-        Method that should be executed only on VT(VERFICATION_THREAD) because only on VT you can spent coins(rewards) and no sense in it on APPROVEMENT_THREAD
     
-        {
-            poolToGetRewardsFrom:<Format is Ed25519_pubkey>
-        }
-    
-    */
-    getRewardFromPool:async(originShard,transaction) => {
-
-        let txCreatorAccount = await getUserAccountFromState(originShard+':'+transaction.creator)
-
-        let {poolToGetRewardsFrom} = transaction.payload.params
-
-        if(txCreatorAccount && typeof poolToGetRewardsFrom === 'string'){
-
-            // Now add it to delayed operations
-
-            let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
-
-            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
-
-            if(!Array.isArray(delayedTransactions)){
-
-                delayedTransactions = []
-
-            }
-
-            let templateToPush = {
-
-                type:'getRewardFromPool',
-
-                rewardRecipient: transaction.creator,
-
-                poolToGetRewardsFrom
-
-
-            }
-
-            delayedTransactions.push(templateToPush)
-
-            GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
-
-            return {isOk:true}
-
-        } else return {isOk:false, reason: `Failed with input verification`}
- 
-    }
-
     
     // slashing:async(originShard,transaction) => {
 

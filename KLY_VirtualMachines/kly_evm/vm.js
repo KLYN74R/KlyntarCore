@@ -234,7 +234,7 @@ class KLY_EVM_CLASS {
 
             return txResult.execResult.exceptionError || web3.utils.toHex(txResult.execResult.returnValue)
 
-        }else {
+        } else {
 
             let vmCopy = await this.vm.copy()
 
