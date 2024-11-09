@@ -209,7 +209,7 @@ FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
 
                 let nonce = Number(account.nonce)
 
-                let {gas} = accountEvmDataFromNativeKlyEnv
+                let gas = accountEvmDataFromNativeKlyEnv?.gas || 0
 
                 if(contractData){
 
