@@ -496,7 +496,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
     
                 if(poolStorage){
 
-                    for(let stakerPubKey of Object.keys(poolStorage)){
+                    for(let stakerPubKey of Object.keys(poolStorage.stakers)){
 
 
                         if(stakerPubKey.startsWith('0x') && stakerPubKey.length === 42){
@@ -505,11 +505,11 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
             
                             let rewardInWei = Math.round(poolStorage.stakers[stakerPubKey].reward * (10 ** 18))
             
-                            let unstakerEvmAccount = await KLY_EVM.getAccount(stakerPubKey)
+                            let stakerEvmAccount = await KLY_EVM.getAccount(stakerPubKey)
               
-                            unstakerEvmAccount.balance += BigInt(rewardInWei)
+                            stakerEvmAccount.balance += BigInt(rewardInWei)
               
-                            await KLY_EVM.updateAccount(stakerPubKey,unstakerEvmAccount)
+                            await KLY_EVM.updateAccount(stakerPubKey,stakerEvmAccount)
 
                         } else {
 
@@ -520,11 +520,10 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
                             accountOfStakerToReceiveRewards.balance += forReward
             
                             accountOfStakerToReceiveRewards.balance -= 0.000000001
-            
-                            poolStorage.stakers[stakerPubKey].reward = 0
-            
 
                         }
+
+                        poolStorage.stakers[stakerPubKey].reward = 0
 
                     }
 
