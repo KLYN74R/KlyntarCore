@@ -82,13 +82,11 @@ let performStakingActionsForEVM = async (originShard,txCreator,transferValue,par
 
             contractID'system/staking',
                                 
-            method:'stake | unstake | getRewardFromPool',
+            method:'stake | unstake,
 
-            poolPubKey:<Format is Ed25519_pubkey>, | null
+            poolPubKey:<Format is Ed25519_pubkey>,
                                 
-            amount:<amount in KLY>, | null
-
-            poolToGetRewardsFrom:<Format is Ed25519_pubkey> | null
+            amount:<amount in KLY>,
                             
         }
                         
