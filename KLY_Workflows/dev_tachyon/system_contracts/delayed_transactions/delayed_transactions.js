@@ -294,7 +294,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                         }
     
-                    }    
+                    }
 
                 }
 
