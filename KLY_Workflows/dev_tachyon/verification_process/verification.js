@@ -16,7 +16,7 @@ import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
 
 import {vtStatsLog} from '../common_functions/logging.js'
 
-import {CONFIGURATION} from '../../../klyn74r.js'
+import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyn74r.js'
 
 import {VERIFIERS} from './txs_verifiers.js'
 
@@ -514,6 +514,25 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
 
         // Unlock the coins and distribute to appropriate accounts
+
+        for(let [recipient,unlocksTable] of Object.entries(BLOCKCHAIN_GENESIS.UNLOCKS)){
+
+            if(recipient.startsWith('0x') && recipient.length === 42){
+
+                let unlockAmount = unlocksTable[`${nextVtEpochIndex}`]
+
+                let amountInWei = Math.round(unlockAmount * (10 ** 18))
+
+                let recipientAccount = await KLY_EVM.getAccount(recipient)
+
+                recipientAccount.balance += BigInt(amountInWei)
+
+                await KLY_EVM.updateAccount(recipient,recipientAccount)
+
+            }
+
+        }
+
 
         // Distribute rewards
         
