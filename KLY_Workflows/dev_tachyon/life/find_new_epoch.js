@@ -370,7 +370,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash = nextEpochHash
 
-                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum = getCurrentEpochQuorum(WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS,nextEpochHash)
+                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum = await getCurrentEpochQuorum(WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS,nextEpochHash)
 
                 await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_QUORUM:${nextEpochId}`,WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum).catch(()=>{})
                 

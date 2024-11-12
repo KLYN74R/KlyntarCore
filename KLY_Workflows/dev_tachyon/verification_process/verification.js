@@ -10,13 +10,13 @@ import {getAllKnownPeers, isMyCoreVersionOld, epochStillFresh} from '../utils.js
 
 import {getFromState} from '../common_functions/state_interactions.js'
 
+import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyn74r.js'
+
 import {executeDelayedTransaction} from '../life/find_new_epoch.js'
 
 import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
 
 import {vtStatsLog} from '../common_functions/logging.js'
-
-import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyn74r.js'
 
 import {VERIFIERS} from './txs_verifiers.js'
 

@@ -1,10 +1,8 @@
 import {getFromApprovementThreadState} from './approvement_thread_related.js'
 
-import {GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
+import {WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {blake3Hash} from '../../../KLY_Utils/utils.js'
-
-import {heapSort} from '../utils.js'
 
 
 
@@ -34,7 +32,7 @@ export let getQuorumUrlsAndPubkeys = async (withPubkey,epochHandler) => {
 
     for(let pubKey of epochHandler.quorum){
 
-        let poolStorage = GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.get(pubKey+'(POOL)_STORAGE_POOL') || await getFromApprovementThreadState(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
+        let poolStorage = await getFromApprovementThreadState(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
         if(poolStorage){
 
@@ -134,36 +132,66 @@ export let getPseudoRandomSubsetFromQuorumByTicketId=(ticketID,epochHandler)=>{
 
 // We get the quorum based on pools' metadata(pass via parameter)
 
-export let getCurrentEpochQuorum = (poolsRegistry,networkParams,newEpochSeed) => {
+export let getCurrentEpochQuorum = async (poolsRegistry, networkParams, newEpochSeed) => {
 
-    // If more than QUORUM_SIZE pools - then choose quorum. Otherwise - return full array of pools
+    if (poolsRegistry.length <= networkParams.QUORUM_SIZE) {
+        
+        return poolsRegistry
     
-    if(poolsRegistry.length > networkParams.QUORUM_SIZE){
+    }
 
-        let poolsMetadataHash = blake3Hash(JSON.stringify(poolsRegistry)+newEpochSeed),
+    let validatorsExtendedData = new Map()
+    
+    let totalStakeSum = 0
 
-            mapping = new Map(),
+    for (let validatorPubKey of poolsRegistry) {
 
-            sortedChallenges = heapSort(
+        let validatorData = await getFromApprovementThreadState(validatorPubKey+'(POOL)_STORAGE_POOL')
 
-                poolsRegistry.map(
+        let requiredData = {
+
+            validatorPubKey, 
+        
+            totalStake: validatorData.totalStakedKly + validatorData.totalStakedUno 
+        
+        }
+
+        totalStakeSum += requiredData.totalStake
+
+        validatorsExtendedData.set(validatorPubKey, requiredData)
+    
+    }
+
+    let weightedSelection = []
+
+    for (let i = 0; i < networkParams.QUORUM_SIZE; i++) {
+
+        let cumulativeSum = 0
+        
+        let hashInput = `${newEpochSeed}_${i}`
+        
+        let deterministicRandomValue = parseInt(blake3Hash(hashInput), 16) % totalStakeSum
+
+        for (let [validatorPubKey, validator] of validatorsExtendedData) {
+
+            cumulativeSum += validator.totalStake
+
+            if (deterministicRandomValue <= cumulativeSum) {
+
+                weightedSelection.push(validator.validatorPubKey)
+
+                totalStakeSum -= validator.totalStake
+
+                validatorsExtendedData.delete(validatorPubKey)
                 
-                    validatorPubKey => {
+                break
+            
+            }
+        
+        }
+    
+    }
 
-                        let challenge = parseInt(blake3Hash(validatorPubKey+poolsMetadataHash),16)
-
-                        mapping.set(challenge,validatorPubKey)
-
-                        return challenge
-
-                    }
-                    
-                )
-
-            )
-
-        return sortedChallenges.slice(0,networkParams.QUORUM_SIZE).map(challenge=>mapping.get(challenge))
-
-    } else return poolsRegistry
+    return weightedSelection
 
 }
