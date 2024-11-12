@@ -36,22 +36,21 @@ export let CONTRACT = {
         gasLimit:0,
         imports:[],
         params:{
-            percentage, overStake, poolURL, wssPoolURL
+            percentage, poolURL, wssPoolURL
         }
         
     Required input params
 
         [*] percentage - % of fees that will be earned by pubkey related to PoolID. The rest(100%-Percentage) will be shared among stakers
-        [*] overStake - number of power allowed to overfill the minimum stake. You need this to prevent deletion from validators pool if your stake are lower than minimum
         [*] poolURL - URL in form http(s)://<domain_or_direct_ip_of_server_cloud_or_smth_like_this>:<port>/<optional_path>
         [*] wssPoolURL - WSS(WebSocket over HTTPS) URL provided by pool for fast data exchange, proofs grabbing, etc.
 
     */
     createStakingPool:async (originShard,transaction) => {
 
-        let {percentage,overStake,poolURL,wssPoolURL} = transaction.payload.params
+        let {percentage,poolURL,wssPoolURL} = transaction.payload.params
 
-        if(overStake >= 0 && percentage >= 0 && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
+        if(percentage >= 0 && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
 
             // Get the array of delayed operations
 
@@ -71,7 +70,7 @@ export let CONTRACT = {
 
                 creator: transaction.creator,
 
-                originShard, percentage, overStake, poolURL, wssPoolURL
+                originShard, percentage, poolURL, wssPoolURL
 
             }
 
