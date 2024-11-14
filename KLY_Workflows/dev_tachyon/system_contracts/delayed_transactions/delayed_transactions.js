@@ -31,9 +31,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
         let {creator,originShard,percentage,poolURL,wssPoolURL} = delayedTransaction
 
-        let poolAlreadyExists = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(creator+'(POOL)_STORAGE_POOL').catch(()=>null)
-
-        if(!poolAlreadyExists && percentage >=0 && typeof originShard === 'string' && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
+        if(percentage >=0 && typeof originShard === 'string' && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
 
             let contractMetadataTemplate = {
 
@@ -71,21 +69,33 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             if(threadContext === 'APPROVEMENT_THREAD'){
 
-                // Put storage
-                // NOTE: We just need a simple storage with ID="POOL"
+                let poolAlreadyExists = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(creator+'(POOL)_STORAGE_POOL').catch(()=>null)
+
+                if(!poolAlreadyExists){
+
+                    // Put storage
+                    // NOTE: We just need a simple storage with ID="POOL"
                 
-                GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(creator+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
+                    GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(creator+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
+
+                } else return {isOk:false}
 
             } else {
 
-                GLOBAL_CACHES.STATE_CACHE.set(creator+'(POOL)_POINTER',originShard)
+                let poolAlreadyExists = await BLOCKCHAIN_DATABASES.STATE.get(creator+'(POOL)_POINTER').catch(()=>null)
 
-                // Put storage
-                // NOTE: We just need a simple storage with ID="POOL"
-                GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+creator+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
+                if(!poolAlreadyExists){
 
-                // Put metadata
-                GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+creator+'(POOL)',contractMetadataTemplate)
+                    GLOBAL_CACHES.STATE_CACHE.set(creator+'(POOL)_POINTER',originShard)
+
+                    // Put storage
+                    // NOTE: We just need a simple storage with ID="POOL"
+                    GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+creator+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
+
+                    // Put metadata
+                    GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+creator+'(POOL)',contractMetadataTemplate)
+
+                } else return {isOk:false}
 
             }
 
