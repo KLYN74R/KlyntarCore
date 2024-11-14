@@ -482,24 +482,27 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         // Unlock the coins and distribute to appropriate accounts
 
-        for(let [recipient,unlocksTable] of Object.entries(BLOCKCHAIN_GENESIS.UNLOCKS)){
+        if(BLOCKCHAIN_GENESIS.UNLOCKS){
 
-            if(recipient.startsWith('0x') && recipient.length === 42){
+            for(let [recipient,unlocksTable] of Object.entries(BLOCKCHAIN_GENESIS.UNLOCKS)){
 
-                let unlockAmount = unlocksTable[`${nextVtEpochIndex}`]
-
-                let amountInWei = Math.round(unlockAmount * (10 ** 18))
-
-                let recipientAccount = await KLY_EVM.getAccount(recipient)
-
-                recipientAccount.balance += BigInt(amountInWei)
-
-                await KLY_EVM.updateAccount(recipient,recipientAccount)
-
-            }
+                if(recipient.startsWith('0x') && recipient.length === 42){
+    
+                    let unlockAmount = unlocksTable[`${nextVtEpochIndex}`]
+    
+                    let amountInWei = Math.round(unlockAmount * (10 ** 18))
+    
+                    let recipientAccount = await KLY_EVM.getAccount(recipient)
+    
+                    recipientAccount.balance += BigInt(amountInWei)
+    
+                    await KLY_EVM.updateAccount(recipient,recipientAccount)
+    
+                }
+    
+            }    
 
         }
-
 
         // Distribute rewards
         
