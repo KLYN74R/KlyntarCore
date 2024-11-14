@@ -15,8 +15,6 @@ export let gasUsedByMethod=methodID=>{
 export let CONTRACT = {
 
 
-    // Change the UNO(staking points) amount for specific pool in case majority of quorum voted for it
-
     changeUnobtaniumAmount:async (originShard,transaction)=>{
 
         /*
@@ -25,11 +23,18 @@ export let CONTRACT = {
 
             {
 
-                targetAccount:
+                targetPool: "PoolX",
 
-                amountUno: 10000,
+                changesInUno: positive or negative numerical value
 
-                action:'+' - to increase | '-' to decrease
+                changesPerAccounts:{
+                
+                    "staker_1": -389,
+                    "staker_2": 5894,
+                    ...
+                    "staker_N": -389
+
+                }
                 
                 quorumAgreements:{
 
@@ -41,10 +46,6 @@ export let CONTRACT = {
 
             }
 
-
-            [1] Verify that majority of quorum agree to add UNO to account
-            [2] Change .uno amount on account by increasing for .amountUno
-        
         
         */
 
