@@ -1,10 +1,10 @@
-import {EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../blockchain_preparation.js'
+import {getFromApprovementThreadState, useTemporaryDb} from '../common_functions/approvement_thread_related.js'
 
-import {useTemporaryDb} from '../common_functions/approvement_thread_related.js'
+import {EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {blake3Hash, getUtcTimestamp} from '../../../KLY_Utils/utils.js'
 
-import {epochStillFresh, heapSort} from '../utils.js'
+import {epochStillFresh} from '../utils.js'
 
 
 
@@ -34,43 +34,65 @@ export let setLeadersSequenceForShards = async (epochHandler,epochSeed) => {
 
     // Change order of validators pseudo-randomly
 
-    let arrayOfChallenges = []
+    let validatorsExtendedData = new Map()
+    
+    let totalStakeSum = 0
 
-    let challenges = new Map()
+    for (let validatorPubKey of epochHandler.poolsRegistry) {
 
-    for(let validatorPubKey of epochHandler.poolsRegistry){
+        let validatorData = await getFromApprovementThreadState(validatorPubKey+'(POOL)_STORAGE_POOL')
 
-        let challengeForPoolBySeedAndPubKey = parseInt(blake3Hash(validatorPubKey+hashOfMetadataFromOldEpoch),16)
+        let requiredData = {
 
-        challenges.set(challengeForPoolBySeedAndPubKey,validatorPubKey)
+            validatorPubKey, 
+        
+            totalStake: validatorData.totalStakedKly + validatorData.totalStakedUno 
+        
+        }
 
-        arrayOfChallenges.push(challengeForPoolBySeedAndPubKey)
+        totalStakeSum += requiredData.totalStake
 
+        validatorsExtendedData.set(validatorPubKey, requiredData)
+    
     }
 
-    // Now sort it
 
-    let sortedChallenges = heapSort(arrayOfChallenges)
-
-    
-    //_______________________________________ Now assign the validators to shards for new epoch ___________________________________________________
-    
     let assignToShardWithIndex = 0
 
-    for(let challenge of sortedChallenges){
+    for (let i = 0; i < epochHandler.poolsRegistry.length; i++) {
 
-        let appropriateValidator = challenges.get(challenge)
+        let cumulativeSum = 0
+        
+        let hashInput = `${hashOfMetadataFromOldEpoch}_${i}`
+        
+        let deterministicRandomValue = parseInt(blake3Hash(hashInput), 16) % totalStakeSum
 
-        let shardID = epochHandler.shardsRegistry[assignToShardWithIndex]
+        for (let [validatorPubKey, validator] of validatorsExtendedData) {
 
-        if(!epochHandler.leadersSequence[shardID]) epochHandler.leadersSequence[shardID] = []
+            cumulativeSum += validator.totalStake
 
-        epochHandler.leadersSequence[shardID].push(appropriateValidator)
+            if (deterministicRandomValue <= cumulativeSum) {
 
-        if(!epochHandler.shardsRegistry[assignToShardWithIndex+1]) assignToShardWithIndex = 0 // next validator will be assigned again to the first shard
+                let shardID = epochHandler.shardsRegistry[assignToShardWithIndex]
 
-        else assignToShardWithIndex++ // to assign next validator to the next shard
+                if(!epochHandler.leadersSequence[shardID]) epochHandler.leadersSequence[shardID] = []
+        
+                epochHandler.leadersSequence[shardID].push(validatorPubKey)
+        
+                if(!epochHandler.shardsRegistry[assignToShardWithIndex+1]) assignToShardWithIndex = 0 // next validator will be assigned again to the first shard
+        
+                else assignToShardWithIndex++ // to assign next validator to the next shard
 
+                totalStakeSum -= validator.totalStake
+
+                validatorsExtendedData.delete(validatorPubKey)
+                
+                break
+            
+            }
+        
+        }
+    
     }
             
 }

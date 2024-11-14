@@ -153,7 +153,7 @@ FASTIFY_SERVER.get('/kly_evm_metadata',(_request,response)=>{
 
 
 
-// Returns urls and pubkeys on current epoch - mostly need for epoch edge transactions / signatures requests   
+// Returns urls and pubkeys on current epoch - mostly need for epoch edge transactions / signatures requests
 FASTIFY_SERVER.get('/quorum_urls_and_pubkeys',async(_request,response)=>{
 
     response

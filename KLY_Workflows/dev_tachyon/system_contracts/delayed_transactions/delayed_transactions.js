@@ -1,12 +1,12 @@
 /* eslint-disable no-unused-vars */
 
-import { KLY_EVM } from "../../../../KLY_VirtualMachines/kly_evm/vm.js"
 import { BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS } from "../../blockchain_preparation.js"
 
 import { getFromApprovementThreadState } from "../../common_functions/approvement_thread_related.js"
 
 import { getFromState, getUserAccountFromState } from "../../common_functions/state_interactions.js"
 
+import { KLY_EVM } from "../../../../KLY_VirtualMachines/kly_evm/vm.js"
 
 
 
@@ -23,17 +23,15 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
         
         creator: transaction.creator,
 
-        originShard, percentage, overStake, poolURL, wssPoolURL
+        originShard, percentage, poolURL, wssPoolURL
     }
     
     */
     createStakingPool:async (threadContext,delayedTransaction) => {
 
-        let {creator,originShard,percentage,overStake,poolURL,wssPoolURL} = delayedTransaction
+        let {creator,originShard,percentage,poolURL,wssPoolURL} = delayedTransaction
 
-        let poolAlreadyExists = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(creator+'(POOL)_STORAGE_POOL').catch(()=>null)
-
-        if(!poolAlreadyExists && overStake>=0 && percentage >=0 && typeof originShard === 'string' && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
+        if(percentage >=0 && typeof originShard === 'string' && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
 
             let contractMetadataTemplate = {
 
@@ -50,9 +48,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
                 
                 percentage,
 
-                overStake,
-
-                totalStakedKly:55000,
+                totalStakedKly: 0,
 
                 totalStakedUno: 0,
 
@@ -73,21 +69,33 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             if(threadContext === 'APPROVEMENT_THREAD'){
 
-                // Put storage
-                // NOTE: We just need a simple storage with ID="POOL"
+                let poolAlreadyExists = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(creator+'(POOL)_STORAGE_POOL').catch(()=>null)
+
+                if(!poolAlreadyExists){
+
+                    // Put storage
+                    // NOTE: We just need a simple storage with ID="POOL"
                 
-                GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(creator+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
+                    GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(creator+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
+
+                } else return {isOk:false}
 
             } else {
 
-                GLOBAL_CACHES.STATE_CACHE.set(creator+'(POOL)_POINTER',originShard)
+                let poolAlreadyExists = await BLOCKCHAIN_DATABASES.STATE.get(creator+'(POOL)_POINTER').catch(()=>null)
 
-                // Put storage
-                // NOTE: We just need a simple storage with ID="POOL"
-                GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+creator+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
+                if(!poolAlreadyExists){
 
-                // Put metadata
-                GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+creator+'(POOL)',contractMetadataTemplate)
+                    GLOBAL_CACHES.STATE_CACHE.set(creator+'(POOL)_POINTER',originShard)
+
+                    // Put storage
+                    // NOTE: We just need a simple storage with ID="POOL"
+                    GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+creator+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
+
+                    // Put metadata
+                    GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+creator+'(POOL)',contractMetadataTemplate)
+
+                } else return {isOk:false}
 
             }
 
@@ -139,11 +147,9 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
             let amountIsBiggerThanMinimalStake = amount >= threadById.NETWORK_PARAMETERS.MINIMAL_STAKE_PER_ENTITY
 
-            let noOverstake = poolStorage.totalStakedKly + poolStorage.overStake >= poolStorage.totalStakedKly + amount
-
             // Here we also need to check if pool is still not fullfilled
 
-            if(amountIsBiggerThanMinimalStake && noOverstake){
+            if(amountIsBiggerThanMinimalStake){
 
                 if(!poolStorage.stakers[staker]) poolStorage.stakers[staker] = {kly:0, uno:0, reward:0}
 
