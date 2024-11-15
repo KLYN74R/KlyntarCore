@@ -1,7 +1,7 @@
 
 <div align="center">
 
-<img src="./images/main.svg">
+<img src="./images/main_cover.svg">
 
 #
 
