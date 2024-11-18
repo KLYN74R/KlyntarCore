@@ -33,6 +33,22 @@ import Web3 from 'web3'
 
 
 
+let getBlockReward = () => {
+
+    let perEpochAllocation = WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION / 30
+
+    let perShardAllocationPerEpoch = perEpochAllocation / WORKING_THREADS.VERIFICATION_THREAD.EPOCH.shardsRegistry.length
+
+    let blocksPerShardPerEpoch = Math.floor(86400000/WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS.BLOCK_TIME) 
+
+    let blockReward = perShardAllocationPerEpoch / blocksPerShardPerEpoch
+
+    return blockReward
+
+}
+
+
+
 //_____________________________________________________________EXPORT SECTION____________________________________________________________________
 
 
@@ -519,18 +535,24 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
             for(let [recipient,unlocksTable] of Object.entries(BLOCKCHAIN_GENESIS.UNLOCKS)){
 
-                if(recipient.startsWith('0x') && recipient.length === 42){
-    
-                    let unlockAmount = unlocksTable[`${nextVtEpochIndex}`]
-    
-                    let amountInWei = Math.round(unlockAmount * (10 ** 18))
-    
-                    let recipientAccount = await KLY_EVM.getAccount(recipient)
-    
-                    recipientAccount.balance += BigInt(amountInWei)
-    
-                    await KLY_EVM.updateAccount(recipient,recipientAccount)
-    
+                if(unlocksTable[`${nextVtEpochIndex}`]){
+
+                    if(recipient === 'mining') WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION = unlocksTable[`${nextVtEpochIndex}`]
+
+                    if(recipient.startsWith('0x') && recipient.length === 42){
+        
+                        let unlockAmount = unlocksTable[`${nextVtEpochIndex}`]
+        
+                        let amountInWei = Math.round(unlockAmount * (10 ** 18))
+        
+                        let recipientAccount = await KLY_EVM.getAccount(recipient)
+        
+                        recipientAccount.balance += BigInt(amountInWei)
+        
+                        await KLY_EVM.updateAccount(recipient,recipientAccount)
+        
+                    }    
+
                 }
     
             }    
@@ -1541,6 +1563,8 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
                 2.2) Increase reward poolStorage.stakers[stakerPubkey].reward += totalStakerPowerPercentage * restOfFees
     
     */
+
+    totalFees += getBlockReward()
 
     let shardOfBlockCreatorStorage = await getFromState(blockCreatorPubKey+'(POOL)_POINTER')
 

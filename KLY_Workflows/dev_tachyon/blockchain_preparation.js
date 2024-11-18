@@ -104,6 +104,8 @@ export let WORKING_THREADS = {
 
         },
 
+        MONTHLY_ALLOCATION:0,
+
         EPOCH:{} // epoch handler
 
     },
