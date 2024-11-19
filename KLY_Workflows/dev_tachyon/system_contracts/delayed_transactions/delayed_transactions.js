@@ -31,7 +31,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
         let {creator,originShard,percentage,poolURL,wssPoolURL} = delayedTransaction
 
-        if(percentage >=0 && typeof originShard === 'string' && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
+        if(percentage >= 0 && percentage <= 1 && typeof originShard === 'string' && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
 
             let contractMetadataTemplate = {
 
@@ -94,6 +94,69 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                     // Put metadata
                     GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+creator+'(POOL)',contractMetadataTemplate)
+
+                } else return {isOk:false}
+
+            }
+
+            return {isOk:true}
+
+        } else return {isOk:false}
+
+    },
+
+
+
+    /*
+    
+
+    delayedTransaction is:
+
+    {
+        type:'updateStakingPool',
+        
+        creator: transaction.creator,
+
+        originShard, percentage, poolURL, wssPoolURL
+    }
+    
+    */
+    updateStakingPool:async (threadContext,delayedTransaction) => {
+
+        let {creator,originShard,percentage,poolURL,wssPoolURL} = delayedTransaction
+
+        if(percentage >=0 && percentage <= 1 && typeof originShard === 'string' && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
+
+            if(threadContext === 'APPROVEMENT_THREAD'){
+
+                let poolStorage = await getFromApprovementThreadState(creator+'(POOL)_STORAGE_POOL').catch(()=>null)
+
+                if(poolStorage){
+
+                    // Update values
+
+                    poolStorage.percentage = percentage
+
+                    poolStorage.poolURL = poolURL
+
+                    poolStorage.wssPoolURL = wssPoolURL
+
+
+                } else return {isOk:false}
+
+            } else {
+
+                let shardWherePoolStorageLocated = await BLOCKCHAIN_DATABASES.STATE.get(creator+'(POOL)_POINTER').catch(()=>null)
+
+                let poolStorage = await getFromState(shardWherePoolStorageLocated+':'+creator+'(POOL)_STORAGE_POOL').catch(()=>null)
+
+                if(shardWherePoolStorageLocated && poolStorage){
+
+                    poolStorage.percentage = percentage
+
+                    poolStorage.poolURL = poolURL
+
+                    poolStorage.wssPoolURL = wssPoolURL
 
                 } else return {isOk:false}
 
