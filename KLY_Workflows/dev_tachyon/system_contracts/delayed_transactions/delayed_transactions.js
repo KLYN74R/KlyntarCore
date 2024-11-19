@@ -26,6 +26,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
         originShard, percentage, poolURL, wssPoolURL
     }
     
+    
     */
     createStakingPool:async (threadContext,delayedTransaction) => {
 
