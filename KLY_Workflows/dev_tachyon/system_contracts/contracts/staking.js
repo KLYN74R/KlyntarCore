@@ -50,7 +50,7 @@ export let CONTRACT = {
 
         let {percentage,poolURL,wssPoolURL} = transaction.payload.params
 
-        if(percentage >= 0 && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
+        if(percentage >= 0 && percentage <= 1 && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
 
             // Get the array of delayed operations
 
@@ -83,6 +83,47 @@ export let CONTRACT = {
         } else return {isOk:false, reason: `Failed with input verification`}
 
     },
+
+
+
+    updateStakingPool:async (originShard,transaction) => {
+
+        let {percentage,poolURL,wssPoolURL} = transaction.payload.params
+
+        if(percentage >= 0 && percentage <= 1 && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
+
+            // Get the array of delayed operations
+
+            let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
+
+            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
+
+            if(!Array.isArray(delayedTransactions)){
+
+                delayedTransactions = []
+
+            }
+
+            let templateToPush = {
+
+                type:'updateStakingPool',
+
+                creator: transaction.creator,
+
+                originShard, percentage, poolURL, wssPoolURL
+
+            }
+
+            delayedTransactions.push(templateToPush)
+
+            GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
+
+            return {isOk:true}
+
+        } else return {isOk:false, reason: `Failed with input verification`}
+
+    },
+
 
 
     /*
