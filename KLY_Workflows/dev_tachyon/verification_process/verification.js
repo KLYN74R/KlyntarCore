@@ -2,11 +2,11 @@ import {getFirstBlockOnEpochOnSpecificShard, verifyAggregatedFinalizationProof} 
 
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GRACEFUL_STOP, GLOBAL_CACHES} from '../blockchain_preparation.js'
 
+import {getAllKnownPeers, isMyCoreVersionOld, epochStillFresh, getRandomFromArray} from '../utils.js'
+
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
 import {customLog, blake3Hash, logColors, verifyEd25519Sync} from '../../../KLY_Utils/utils.js'
-
-import {getAllKnownPeers, isMyCoreVersionOld, epochStillFresh} from '../utils.js'
 
 import {getFromState} from '../common_functions/state_interactions.js'
 
@@ -33,7 +33,22 @@ import Web3 from 'web3'
 
 
 
-//_____________________________________________________________EXPORT SECTION____________________________________________________________________
+let getBlockReward = () => {
+
+    let perEpochAllocation = WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION / 30
+
+    let perShardAllocationPerEpoch = perEpochAllocation / WORKING_THREADS.VERIFICATION_THREAD.EPOCH.shardsRegistry.length
+
+    let blocksPerShardPerEpoch = Math.floor(86400000/WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS.BLOCK_TIME) 
+
+    let blockReward = perShardAllocationPerEpoch / blocksPerShardPerEpoch
+
+    return blockReward
+
+}
+
+
+
 
 
 
@@ -123,6 +138,166 @@ export let getBlock = async (epochIndex,blockCreator,index) => {
     }
 
     return block
+
+}
+
+
+
+export let getMultipleBlocks = async (epochHandler,blockCreator,fromIndex) => {
+
+    // Try to ask 100 blocks batch - from <fromIndex> to <fromIndex+100>
+
+    // 1. Try to find blocks locally
+
+    let epochIndex = epochHandler.id
+
+    let allKnownNodes = [...await getQuorumUrlsAndPubkeys(),...getAllKnownPeers()]
+
+    let randomTargetURL = getRandomFromArray(allKnownNodes)
+
+
+    const controller = new AbortController()
+
+    setTimeout(() => controller.abort(), 7000)
+
+    ///multiple_blocks/:epoch_index/:pool_id/:from_index
+
+
+    let response = await fetch(randomTargetURL+`/multiple_blocks/${epochIndex}/${blockCreator}/${fromIndex}`).then(r=>r.json()).catch(()=>null)
+
+
+    /*
+        
+        The response has the following structure:
+
+        {
+        
+            blocks:[],
+            afpForLatest:{}
+
+        }
+    
+    */
+    
+    if(response && Array.isArray(response.blocks) && response.blocks[0]?.index === fromIndex){
+
+        if(response.afpForLatest){
+
+            // Make sure it's a chain
+
+            let breaked = false
+
+            for(let currentBlockIndexInArray = response.blocks.length-1 ; currentBlockIndexInArray >= 0 ; currentBlockIndexInArray--){
+
+                let currentBlock = response.blocks[currentBlockIndexInArray]
+
+                // Compare hashes - currentBlock.prevHash must be the same as Hash(blocks[index-1])
+
+                let hashesAreEqual = true, indexesAreOk = true
+
+                if(currentBlockIndexInArray>0){
+
+                    hashesAreEqual = Block.genHash(response.blocks[currentBlockIndexInArray-1]) === currentBlock.prevHash
+
+                    indexesAreOk = response.blocks[currentBlockIndexInArray-1].index+1 === response.blocks[currentBlockIndexInArray].index
+
+                }
+
+                // Now, check the structure of block
+
+                let typeCheckIsOk = typeof currentBlock.extraData==='object' && typeof currentBlock.prevHash==='string' && typeof currentBlock.epoch==='string' && typeof currentBlock.sig==='string' && Array.isArray(currentBlock.transactions)
+        
+                let itsTheSameCreator = currentBlock.creator === blockCreator
+
+                let overviewIsOk = typeCheckIsOk && itsTheSameCreator && hashesAreEqual && indexesAreOk
+
+                // If it's the last block in array(and first in enumeration) - check the AFP for latest block
+
+                if(overviewIsOk && currentBlockIndexInArray === response.blocks.length-1){
+
+                    let blockIDThatMustBeInAfp = epochIndex+':'+blockCreator+':'+(currentBlock.index+1)
+
+                    let prevBlockHashThatMustBeInAfp = Block.genHash(currentBlock)
+
+                    overviewIsOk &&= blockIDThatMustBeInAfp === response.afpForLatest.blockID && prevBlockHashThatMustBeInAfp === response.afpForLatest.prevBlockHash && await verifyAggregatedFinalizationProof(response.afpForLatest,epochHandler)
+
+                }
+        
+        
+                if(!overviewIsOk){
+
+                    breaked = true
+
+                    break
+
+                }
+
+            }
+
+            if(!breaked) return response.blocks
+
+        } else {
+
+            let maybeWeFindLatest = GLOBAL_CACHES.STUFF_CACHE.get('GET_FINAL_BLOCK:'+blockCreator)
+
+            let lastBlockInArr = response.blocks[response.blocks.length-1]
+
+            if(maybeWeFindLatest && lastBlockInArr.index > maybeWeFindLatest.index){
+
+                response.blocks = response.blocks.filter(block=>block.index <= maybeWeFindLatest.index)
+
+            }
+
+            lastBlockInArr = response.blocks[response.blocks.length-1]
+
+            if(lastBlockInArr.index === maybeWeFindLatest.index && maybeWeFindLatest.hash === Block.genHash(lastBlockInArr)){
+    
+                // Finally - make sure it's a chain in array
+
+                let breaked = false
+
+                for(let currentBlockIndexInArray = response.blocks.length-1 ; currentBlockIndexInArray >= 0 ; currentBlockIndexInArray--){
+
+                    let currentBlock = response.blocks[currentBlockIndexInArray]
+
+                    // Compare hashes - currentBlock.prevHash must be the same as Hash(blocks[index-1])
+
+                    let hashesAreEqual = true, indexesAreOk = true
+
+                    if(currentBlockIndexInArray>0){
+
+                        hashesAreEqual = Block.genHash(response.blocks[currentBlockIndexInArray-1]) === currentBlock.prevHash
+
+                        indexesAreOk = response.blocks[currentBlockIndexInArray-1].index+1 === response.blocks[currentBlockIndexInArray].index
+
+                    }
+
+                    // Now, check the structure of block
+
+                    let typeCheckIsOk = typeof currentBlock.extraData==='object' && typeof currentBlock.prevHash==='string' && typeof currentBlock.epoch==='string' && typeof currentBlock.sig==='string' && Array.isArray(currentBlock.transactions)
+        
+                    let itsTheSameCreator = currentBlock.creator === blockCreator
+
+                    let overviewIsOk = typeCheckIsOk && itsTheSameCreator && hashesAreEqual && indexesAreOk
+        
+        
+                    if(!overviewIsOk){
+
+                        breaked = true
+
+                        break
+
+                    }
+
+                }
+
+                if(!breaked) return response.blocks
+    
+            }
+
+        }
+
+    }
 
 }
 
@@ -486,18 +661,24 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
             for(let [recipient,unlocksTable] of Object.entries(BLOCKCHAIN_GENESIS.UNLOCKS)){
 
-                if(recipient.startsWith('0x') && recipient.length === 42){
-    
-                    let unlockAmount = unlocksTable[`${nextVtEpochIndex}`]
-    
-                    let amountInWei = Math.round(unlockAmount * (10 ** 18))
-    
-                    let recipientAccount = await KLY_EVM.getAccount(recipient)
-    
-                    recipientAccount.balance += BigInt(amountInWei)
-    
-                    await KLY_EVM.updateAccount(recipient,recipientAccount)
-    
+                if(unlocksTable[`${nextVtEpochIndex}`]){
+
+                    if(recipient === 'mining') WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION = unlocksTable[`${nextVtEpochIndex}`]
+
+                    if(recipient.startsWith('0x') && recipient.length === 42){
+        
+                        let unlockAmount = unlocksTable[`${nextVtEpochIndex}`]
+        
+                        let amountInWei = Math.round(unlockAmount * (10 ** 18))
+        
+                        let recipientAccount = await KLY_EVM.getAccount(recipient)
+        
+                        recipientAccount.balance += BigInt(amountInWei)
+        
+                        await KLY_EVM.updateAccount(recipient,recipientAccount)
+        
+                    }    
+
                 }
     
             }    
@@ -1313,9 +1494,9 @@ export let startVerificationThread=async()=>{
 
             let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolPubKey) // {url,hasUntilHeight,connection,cache(blockID=>block)}
 
-            if(tunnelHandler){
+            GLOBAL_CACHES.STUFF_CACHE.set('GET_FINAL_BLOCK:'+poolPubKey,infoFromAefpAboutLastBlocksByPoolsOnShards[poolPubKey])
 
-                GLOBAL_CACHES.STUFF_CACHE.set('GET_FINAL_BLOCK:'+poolPubKey,infoFromAefpAboutLastBlocksByPoolsOnShards[poolPubKey])
+            if(tunnelHandler){
             
                 let biggestHeightInCache = tunnelHandler.hasUntilHeight
 
@@ -1353,8 +1534,25 @@ export let startVerificationThread=async()=>{
             
                 }
 
-            } else break
-        
+            } else {
+
+                let batchOfBlocksFromAnotherSource = await getMultipleBlocks(vtEpochHandler,poolPubKey,localVtMetadataForPool.index+1)
+    
+                if(batchOfBlocksFromAnotherSource){
+    
+                    for(let block of batchOfBlocksFromAnotherSource){
+    
+                        if(block.index === localVtMetadataForPool.index+1){
+    
+                            await verifyBlock(block,currentShardToCheck)
+    
+                        }
+    
+                    }
+    
+                }
+    
+            }
 
         }
 
@@ -1414,14 +1612,14 @@ export let startVerificationThread=async()=>{
 
         let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow) // {url,hasUntilHeight,connection,cache(blockID=>block)}
 
+        // In this case we can grab the final block
+        if(infoAboutLastBlockByThisPool) GLOBAL_CACHES.STUFF_CACHE.set('GET_FINAL_BLOCK:'+poolToVerifyRightNow,infoAboutLastBlockByThisPool)
+
         if(tunnelHandler){
 
             let biggestHeightInCache = tunnelHandler.hasUntilHeight
 
             let stepsForWhile = biggestHeightInCache - verificationStatsOfThisPool.index
-
-            // In this case we can grab the final block
-            if(infoAboutLastBlockByThisPool) GLOBAL_CACHES.STUFF_CACHE.set('GET_FINAL_BLOCK:'+poolToVerifyRightNow,infoAboutLastBlockByThisPool)
 
             // Start the cycle to process all the blocks
 
@@ -1445,6 +1643,24 @@ export let startVerificationThread=async()=>{
         
             }
     
+        } else {
+
+            let batchOfBlocksFromAnotherSource = await getMultipleBlocks(vtEpochHandler,poolToVerifyRightNow,verificationStatsOfThisPool.index+1)
+
+            if(batchOfBlocksFromAnotherSource){
+
+                for(let block of batchOfBlocksFromAnotherSource){
+
+                    if(block.index === verificationStatsOfThisPool.index+1){
+
+                        await verifyBlock(block,currentShardToCheck)
+
+                    }
+
+                }
+
+            }
+
         }
 
     }
@@ -1508,6 +1724,8 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
                 2.2) Increase reward poolStorage.stakers[stakerPubkey].reward += totalStakerPowerPercentage * restOfFees
     
     */
+
+    totalFees += getBlockReward()
 
     let shardOfBlockCreatorStorage = await getFromState(blockCreatorPubKey+'(POOL)_POINTER')
 
