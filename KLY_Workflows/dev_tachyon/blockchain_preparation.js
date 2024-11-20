@@ -485,6 +485,36 @@ let setGenesisToState=async()=>{
 
     }
 
+
+    // Initiate TGE to set the initial block reward + distribute coins among entities
+
+    if(BLOCKCHAIN_GENESIS.UNLOCKS){
+
+        for(let [recipient,unlocksTable] of Object.entries(BLOCKCHAIN_GENESIS.UNLOCKS)){
+
+            if(unlocksTable["0"]){
+
+                if(recipient === 'mining') WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION = unlocksTable["0"]
+
+                if(recipient.startsWith('0x') && recipient.length === 42){
+    
+                    let unlockAmount = unlocksTable["0"]
+    
+                    let amountInWei = Math.round(unlockAmount * (10 ** 18))
+    
+                    let recipientAccount = await KLY_EVM.getAccount(recipient)
+    
+                    recipientAccount.balance += BigInt(amountInWei)
+    
+                    await KLY_EVM.updateAccount(recipient,recipientAccount)
+    
+                }    
+
+            }
+
+        }    
+
+    }
   
 
     /*

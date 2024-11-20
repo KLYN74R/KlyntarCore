@@ -35,15 +35,22 @@ import Web3 from 'web3'
 
 let getBlockReward = () => {
 
-    let perEpochAllocation = WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION / 30
+    if(WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION === 0) return 0
 
-    let perShardAllocationPerEpoch = perEpochAllocation / WORKING_THREADS.VERIFICATION_THREAD.EPOCH.shardsRegistry.length
+    else {
 
-    let blocksPerShardPerEpoch = Math.floor(86400000/WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS.BLOCK_TIME) 
+        let perEpochAllocation = WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION / 30
 
-    let blockReward = perShardAllocationPerEpoch / blocksPerShardPerEpoch
+        let perShardAllocationPerEpoch = perEpochAllocation / WORKING_THREADS.VERIFICATION_THREAD.EPOCH.shardsRegistry.length
+    
+        let blocksPerShardPerEpoch = Math.floor(86400000/WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS.BLOCK_TIME) 
+    
+        let blockReward = perShardAllocationPerEpoch / blocksPerShardPerEpoch
 
-    return blockReward
+    
+        return blockReward.toFixed(9)-0.000000001    
+
+    }
 
 }
 
@@ -2054,7 +2061,7 @@ let verifyBlock = async(block,shardContext) => {
         let blockToStore = KLY_EVM.getBlockToStore(currentHash)
 
 
-        
+        getBlockReward()
         atomicBatch.put(`${shardContext}:EVM_BLOCK:${blockToStore.number}`,blockToStore)
 
         atomicBatch.put(`${shardContext}:EVM_INDEX:${blockToStore.hash}`,blockToStore.number)
