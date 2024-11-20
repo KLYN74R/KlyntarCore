@@ -1764,8 +1764,10 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
                 2.2) Increase reward poolStorage.stakers[stakerPubkey].reward += totalStakerPowerPercentage * restOfFees
     
     */
+    
 
     totalFees += getBlockReward()
+    
 
     let shardOfBlockCreatorStorage = await getFromState(blockCreatorPubKey+'(POOL)_POINTER')
 
@@ -1952,31 +1954,32 @@ let verifyBlock = async(block,shardContext) => {
 
             }        
 
-        
-            //_____________________________________SHARE FEES AMONG POOL OWNER AND STAKERS__________________________________
-        
-            /*
-            
-                Distribute fees among:
-
-                    [0] Block creator itself
-                    [1] Stakers of his pool
-
-            */
-            await distributeFeesAmongPoolAndStakers(rewardsAndSuccessfulTxsCollector.fees,block.creator)
-
-            
-            //________________________________________________COMMIT STATE__________________________________________________    
-
-
-            GLOBAL_CACHES.STATE_CACHE.forEach((account,storageCellID)=>
-
-                atomicBatch.put(storageCellID,account)
-
-            )
 
         }
 
+
+        //_____________________________________SHARE FEES AMONG POOL OWNER AND STAKERS__________________________________
+        
+        /*
+            
+            Distribute fees among:
+
+                [0] Block creator itself
+                [1] Stakers of his pool
+
+        */
+        
+        await distributeFeesAmongPoolAndStakers(rewardsAndSuccessfulTxsCollector.fees,block.creator)
+
+            
+        //________________________________________________COMMIT STATE__________________________________________________    
+        
+        
+        GLOBAL_CACHES.STATE_CACHE.forEach((account,storageCellID)=>
+        
+            atomicBatch.put(storageCellID,account)
+        
+        )
         
         // Probably you would like to store only state or you just run another node via cloud module and want to store some range of blocks remotely
         if(CONFIGURATION.NODE_LEVEL.STORE_BLOCKS_IN_LOCAL_DATABASE){
@@ -2094,7 +2097,6 @@ let verifyBlock = async(block,shardContext) => {
         let blockToStore = KLY_EVM.getBlockToStore(currentHash)
 
 
-        getBlockReward()
         atomicBatch.put(`${shardContext}:EVM_BLOCK:${blockToStore.number}`,blockToStore)
 
         atomicBatch.put(`${shardContext}:EVM_INDEX:${blockToStore.hash}`,blockToStore.number)
