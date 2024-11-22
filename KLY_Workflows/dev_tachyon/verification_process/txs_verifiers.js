@@ -390,7 +390,7 @@ export let VERIFIERS = {
 
                     if(!includesAll) return {isOk:false,reason:'Wrong accounts in .touchedAccounts'}    
 
-                } return {isOk:false,reason:`.touchedAccounts should contain only 2 accounts - for sender and recipient`}
+                } else return {isOk:false,reason:`.touchedAccounts should contain only 2 accounts - for sender and recipient`}
 
             }
 
