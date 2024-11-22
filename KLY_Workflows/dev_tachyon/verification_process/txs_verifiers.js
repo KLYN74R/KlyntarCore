@@ -384,9 +384,13 @@ export let VERIFIERS = {
 
             if(Array.isArray(tx.payload.touchedAccounts)){
 
-                let includesAll = tx.payload.touchedAccounts.includes(tx.creator) && tx.payload.touchedAccounts.includes(tx.payload.to)
+                if(tx.payload.touchedAccounts.length === 2){
 
-                if(!includesAll) return {isOk:false,reason:'Wrong accounts in .touchedAccounts'}
+                    let includesAll = tx.payload.touchedAccounts.includes(tx.creator) && tx.payload.touchedAccounts.includes(tx.payload.to)
+
+                    if(!includesAll) return {isOk:false,reason:'Wrong accounts in .touchedAccounts'}    
+
+                } return {isOk:false,reason:`.touchedAccounts should contain only 2 accounts - for sender and recipient`}
 
             }
 
