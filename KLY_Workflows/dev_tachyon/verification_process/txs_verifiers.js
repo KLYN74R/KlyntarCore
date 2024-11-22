@@ -384,9 +384,13 @@ export let VERIFIERS = {
 
             if(Array.isArray(tx.payload.touchedAccounts)){
 
-                let includesAll = tx.payload.touchedAccounts.includes(tx.creator) && tx.payload.touchedAccounts.includes(tx.payload.to)
+                if(tx.payload.touchedAccounts.length === 2){
 
-                if(!includesAll) return {isOk:false,reason:'Wrong accounts in .touchedAccounts'}
+                    let includesAll = tx.payload.touchedAccounts.includes(tx.creator) && tx.payload.touchedAccounts.includes(tx.payload.to)
+
+                    if(!includesAll) return {isOk:false,reason:'Wrong accounts in .touchedAccounts'}    
+
+                } return {isOk:false,reason:`.touchedAccounts should contain only 2 accounts - for sender and recipient`}
 
             }
 
@@ -511,6 +515,8 @@ export let VERIFIERS = {
 
     WVM_CONTRACT_DEPLOY:async (originShard,tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
 
+        if(tx) return {isOk:false,reason:`Contract deployment to WASM vm disabled for a while`}
+
         let senderAccount = await getUserAccountFromState(originShard+':'+tx.creator)
 
         tx = await TXS_FILTERS.WVM_CONTRACT_DEPLOY(tx,originShard) // pass through the filter
@@ -593,6 +599,8 @@ export let VERIFIERS = {
 
     */
     WVM_CALL:async(originShard,tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
+
+        if(tx) return {isOk:false,reason:`Contract calls in WASM vm disabled for a while`}
 
         let senderAccount = await getUserAccountFromState(originShard+':'+tx.creator)
 
