@@ -1,5 +1,7 @@
 import {verifyQuorumMajoritySolution} from "../../common_functions/work_with_proofs.js"
 
+import {GLOBAL_CACHES, WORKING_THREADS} from "../../blockchain_preparation.js"
+
 import {getFromState} from "../../common_functions/state_interactions.js"
 
 
@@ -25,8 +27,6 @@ export let CONTRACT = {
 
                 targetPool: "PoolX",
 
-                changesInUno: positive or negative numerical value
-
                 changesPerAccounts:{
                 
                     "staker_1": -389,
@@ -38,9 +38,9 @@ export let CONTRACT = {
                 
                 quorumAgreements:{
 
-                    quorumMember1: SIG(`changeUnoAmount:${transaction.creator}:${amountUno}:${action}:${transaction.nonce}`),
+                    quorumMember1: SIG(`changeUnoAmount:${transaction.creator}:${transaction.nonce}:${targetPool}:${JSON.stringify(changesPerAccounts}`),
                     ...
-                    quorumMemberPubKeyN: SIG(`changeUnoAmount:${transaction.creator}:${amountUno}:${action}:${transaction.nonce}`)
+                    quorumMemberPubKeyN: SIG(`changeUnoAmount:${transaction.creator}:${transaction.nonce}:${targetPool}:${JSON.stringify(changesPerAccounts}`)
 
                 }
 
@@ -49,30 +49,49 @@ export let CONTRACT = {
         
         */
 
-        let {amountUno, action, quorumAgreements} = transaction.payload.params
+        let {targetPool, changesPerAccounts, quorumAgreements} = transaction.payload.params
 
-        if(typeof amountUno === 'number' && typeof action === 'string' && quorumAgreements && typeof quorumAgreements === 'object'){
+        if(typeof targetPool === 'string' && typeof quorumAgreements === 'object' && typeof changesPerAccounts === 'object'){
 
-            let recipientAccount = await getFromState(originShard+':'+transaction.creator)
+            let dataThatShouldBeSigned = `changeUnoAmount:${transaction.creator}:${transaction.nonce}:${targetPool}:${JSON.stringify(changesPerAccounts)}`
 
-            if(recipientAccount){
+            // Verify that majority approved this changes:
 
-                let dataThatShouldBeSigned = `changeUnoAmount:${transaction.creator}:${amountUno}:${action}:${transaction.nonce}` // with nonce + tx.creator to prevent replay
+            let majorityApproved = verifyQuorumMajoritySolution(dataThatShouldBeSigned,quorumAgreements)
 
-                // Minting require quorum's majority agreement while burning is your own deal
-                // Burning is a signal for offchain service like "I burnt my UNO, please release my freezed assets"
-                
-                if(action === '+' && verifyQuorumMajoritySolution(dataThatShouldBeSigned,quorumAgreements)) recipientAccount.uno += amountUno
+            let targetPoolExists = await getFromState(targetPool+'(POOL)_POINTER').catch(()=>null)
 
-                else if(recipientAccount.uno - amountUno >= 0) recipientAccount.uno -= amountUno // you can't burn more UNO than you have
+            if(majorityApproved && targetPoolExists){
 
+                // Now add it to delayed operations
+
+                let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id + 2
+
+                let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
+
+                if(!Array.isArray(delayedTransactions)){
+
+                    delayedTransactions = []
+
+                }
+
+                let templateToPush = {
+
+                    type:'changeUnobtaniumAmount',
+
+                    targetPool, changesPerAccounts
+
+                }
+
+                delayedTransactions.push(templateToPush)
+
+                GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
 
                 return {isOk:true}
 
-            } else return {isOk:false, reason:'No such account'}
+            } else return {isOk:false, reason:'Target pool does not exists and/or majority verification failed'}
 
-        } else return {isOk:false, reason:'Wrong datatypes or majority verification failed'}
-
+        } else return {isOk:false, reason: `Failed with input verification`}
 
     }
 

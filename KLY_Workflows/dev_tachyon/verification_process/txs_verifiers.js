@@ -600,7 +600,6 @@ export let VERIFIERS = {
     */
     WVM_CALL:async(originShard,tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
 
-        if(tx) return {isOk:false,reason:`Contract calls in WASM vm disabled for a while`}
 
         let senderAccount = await getUserAccountFromState(originShard+':'+tx.creator)
 
@@ -643,6 +642,8 @@ export let VERIFIERS = {
                         } else execResultWithStatusAndReason = {isOk:false,reason:`No such type of system contract`}
                 
                     } else {
+
+                        if(tx) return {isOk:false,reason:`Custom contract calls in WASM vm disabled for a while`}
         
                         // Otherwise it's attempt to call custom contract
         
