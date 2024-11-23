@@ -324,7 +324,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                     poolStorage.totalStakedKly -= amount
 
-                    if(unstakerAccount.kly === 0){
+                    if(unstakerAccount.kly === 0 && unstakerAccount.uno === 0){
 
                         delete poolStorage.stakers[unstaker] // just to make pool storage more clear
 
@@ -395,10 +395,70 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
     },
 
 
+    /*
     
+
+    delayedTransaction is:
+    
+    {
+
+        type:'changeUnobtaniumAmount',
+
+        targetPool, changesPerAccounts
+
+    }
+    
+    
+    */
     changeUnobtaniumAmount:async (threadContext,delayedTransaction)=>{
 
+        let {targetPool,changesPerAccounts} = delayedTransaction
 
+        let poolStorage
+
+        let shardWherePoolStorageLocated
+
+        if(threadContext === 'APPROVEMENT_THREAD'){
+
+            poolStorage = await getFromApprovementThreadState(targetPool+'(POOL)_STORAGE_POOL')
+
+        } else {
+        
+            shardWherePoolStorageLocated = await getFromState(targetPool+'(POOL)_POINTER').catch(()=>null)
+
+            poolStorage = await getFromState(shardWherePoolStorageLocated+':'+targetPool+'(POOL)_STORAGE_POOL').catch(()=>null)
+
+        }
+
+        if(poolStorage){
+
+            let generalUnoChange = 0
+
+            for(let [staker,valueOfUno] of Object.entries(changesPerAccounts)){
+
+                if(!poolStorage.stakers[staker]) poolStorage.stakers[staker] = {kly:0, uno:0, reward:0}
+
+                poolStorage.stakers[staker].uno += valueOfUno
+
+                if(poolStorage.stakers[staker].uno < 0) poolStorage.stakers[staker].uno = 0
+
+                if(poolStorage.stakers[staker].kly === 0 && poolStorage.stakers[staker].uno === 0){
+
+                    delete poolStorage.stakers[staker] // just to make pool storage more clear
+
+                }
+                
+                generalUnoChange += valueOfUno
+
+            }
+
+            // Finally modify the general UNO amount for pool
+
+            poolStorage.totalStakedUno += generalUnoChange
+            
+            return {isOk:true}
+
+        } else return {isOk:false,reason:'No such pool'}
 
     }
 

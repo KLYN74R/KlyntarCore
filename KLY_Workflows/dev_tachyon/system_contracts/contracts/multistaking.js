@@ -65,7 +65,7 @@ export let CONTRACT = {
 
                 // Now add it to delayed operations
 
-                let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
+                let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id + 2
 
                 let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
 
