@@ -25,8 +25,6 @@ export let CONTRACT = {
 
                 targetPool: "PoolX",
 
-                changesInUno: positive or negative numerical value
-
                 changesPerAccounts:{
                 
                     "staker_1": -389,
@@ -38,9 +36,9 @@ export let CONTRACT = {
                 
                 quorumAgreements:{
 
-                    quorumMember1: SIG(`changeUnoAmount:${transaction.creator}:${amountUno}:${action}:${transaction.nonce}`),
+                    quorumMember1: SIG(`changeUnoAmount:${transaction.creator}:${transaction.nonce}:${JSON.stringify(changesPerAccounts}`),
                     ...
-                    quorumMemberPubKeyN: SIG(`changeUnoAmount:${transaction.creator}:${amountUno}:${action}:${transaction.nonce}`)
+                    quorumMemberPubKeyN: SIG(`changeUnoAmount:${transaction.creator}:${transaction.nonce}:${JSON.stringify(changesPerAccounts}`)
 
                 }
 
