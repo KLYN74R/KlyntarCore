@@ -35,11 +35,11 @@ import Web3 from 'web3'
 
 let getBlockReward = () => {
 
-    if(WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION === 0) return 0
+    if(WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION_FOR_REWARDS === 0) return 0
 
     else {
 
-        let perEpochAllocation = WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION / 30
+        let perEpochAllocation = WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION_FOR_REWARDS / 30
 
         let perShardAllocationPerEpoch = perEpochAllocation / WORKING_THREADS.VERIFICATION_THREAD.EPOCH.shardsRegistry.length
     
@@ -670,13 +670,23 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
                 if(unlocksTable[`${nextVtEpochIndex}`]){
 
-                    if(recipient === 'mining') WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION = unlocksTable[`${nextVtEpochIndex}`]
+                    WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH[`${nextVtEpochIndex}`] = {}
+
+                    if(recipient === 'mining') {
+
+                        WORKING_THREADS.VERIFICATION_THREAD.MONTHLY_ALLOCATION_FOR_REWARDS = unlocksTable[`${nextVtEpochIndex}`]
+
+                        WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH[`${nextVtEpochIndex}`]["mining"] = 0
+
+                    }
 
                     if(recipient.startsWith('0x') && recipient.length === 42){
         
                         let unlockAmount = unlocksTable[`${nextVtEpochIndex}`]
         
                         let amountInWei = Math.round(unlockAmount * (10 ** 18))
+
+                        WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH[`${nextVtEpochIndex}`][recipient] = unlockAmount
         
                         let recipientAccount = await KLY_EVM.getAccount(recipient)
         
@@ -1732,8 +1742,13 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
     
     */
     
+    let blockReward = getBlockReward()
 
-    totalFees += getBlockReward()
+    let currentEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
+
+    WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH[`${currentEpochIndex}`]["mining"] = blockReward
+
+    totalFees += blockReward
     
 
     let shardOfBlockCreatorStorage = await getFromState(blockCreatorPubKey+'(POOL)_POINTER')
