@@ -703,7 +703,10 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
                 if(unlocksTable[`${nextVtEpochIndex}`]){
 
-                    WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH[`${nextVtEpochIndex}`] = {}
+                    let tracker = WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH[`${nextVtEpochIndex}`]
+
+                    if(!tracker) WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH[`${nextVtEpochIndex}`] = {}
+
 
                     if(recipient === 'mining') {
 
@@ -1779,9 +1782,11 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
 
     let currentEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
 
-    WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH[`${currentEpochIndex}`]["mining"] += blockReward
+
+    WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH[`${currentEpochIndex}`]["mining"] += blockReward    
 
     totalFees += blockReward
+
     
 
     let shardOfBlockCreatorStorage = await getFromState(blockCreatorPubKey+'(POOL)_POINTER')

@@ -479,11 +479,12 @@ let setGenesisToState=async()=>{
 
     if(BLOCKCHAIN_GENESIS.UNLOCKS){
 
+        WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH["0"] = {}
+
         for(let [recipient,unlocksTable] of Object.entries(BLOCKCHAIN_GENESIS.UNLOCKS)){
 
             if(unlocksTable["0"]){
 
-                WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH["0"] = {}
 
                 if(recipient === 'mining') {
 
@@ -511,7 +512,7 @@ let setGenesisToState=async()=>{
 
             }
 
-        }    
+        }
 
     }
   
