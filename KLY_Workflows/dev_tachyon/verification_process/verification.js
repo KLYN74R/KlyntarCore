@@ -1779,7 +1779,7 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
 
     let currentEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
 
-    WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH[`${currentEpochIndex}`]["mining"] = blockReward
+    WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH[`${currentEpochIndex}`]["mining"] += blockReward
 
     totalFees += blockReward
     
