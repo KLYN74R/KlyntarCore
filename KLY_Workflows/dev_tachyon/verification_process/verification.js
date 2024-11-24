@@ -1749,10 +1749,20 @@ let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
 
     let currentEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
 
+    if(!WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH[`${currentEpochIndex}`]){
+
+        WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH[`${currentEpochIndex}`] = {}
+
+    }
 
     WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH[`${currentEpochIndex}`]["mining"] += blockReward    
 
     totalFees += blockReward
+<<<<<<< HEAD
+=======
+
+    
+>>>>>>> main
 
     
     let shardOfBlockCreatorStorage = await getFromState(blockCreatorPubKey+'(POOL)_POINTER')
