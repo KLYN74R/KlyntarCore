@@ -445,7 +445,7 @@ let setGenesisToState=async()=>{
 
             if(accountData.type === 'contract'){
 
-                let {lang,balance,gas,storages,bytecode,storageAbstractionLastPayment,shard} = accountData
+                let {lang,balance,gas,storages,bytecode,storageAbstractionLastPayment} = accountData
 
                 let contractMeta = {
 
@@ -468,7 +468,7 @@ let setGenesisToState=async()=>{
 
                 for(let storageID of storages){
 
-                    verificationThreadAtomicBatch.put(shard+':'+accountID+'_STORAGE_'+storageID,accountData[storageID])
+                    verificationThreadAtomicBatch.put(shardID+':'+accountID+'_STORAGE_'+storageID,accountData[storageID])
 
                 }
 
