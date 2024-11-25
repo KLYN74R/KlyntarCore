@@ -241,6 +241,46 @@ export let CONTRACT = {
         } else return {isOk:false, reason: `Failed with input verification`}
  
     },
+
+
+    // Required for recovery
+
+    activate:async(originShard,transaction) => {
+
+        let shardWhereTargetPoolBinded = await getFromState(transaction.creator+'(POOL)_POINTER')
+
+        if(originShard === shardWhereTargetPoolBinded){
+
+            // Now add it to delayed operations
+
+            let overNextEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id+2
+
+            let delayedTransactions = await getFromState(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`) // should be array of delayed operations
+
+            if(!Array.isArray(delayedTransactions)){
+
+                delayedTransactions = []
+
+            }
+
+            let templateToPush = {
+
+                type:'activate',
+
+                poolPubKey: transaction.creator
+
+            }
+
+            delayedTransactions.push(templateToPush)
+
+            GLOBAL_CACHES.STATE_CACHE.set(`DELAYED_TRANSACTIONS:${overNextEpochIndex}:${originShard}`,delayedTransactions)
+
+            return {isOk:true}
+
+        } else return {isOk:false, reason: `Failed with input verification`}
+
+    },
+
     
     
     // slashing:async(originShard,transaction) => {
