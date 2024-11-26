@@ -649,17 +649,17 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         // Now delete the delayed transactions array
 
-        let overPreviousEpochHandler = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_HANDLER:${vtEpochHandler.id-2}`).catch(()=>null)
+        // let overPreviousEpochHandler = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_HANDLER:${vtEpochHandler.id-2}`).catch(()=>null)
 
-        if(overPreviousEpochHandler) {
+        // if(overPreviousEpochHandler) {
 
-            for(let shardID of overPreviousEpochHandler.shardsRegistry){
+        //     for(let shardID of overPreviousEpochHandler.shardsRegistry){
 
-                atomicBatch.del(`DELAYED_TRANSACTIONS:${vtEpochHandler.id}:${shardID}`)
+        //         atomicBatch.del(`DELAYED_TRANSACTIONS:${vtEpochHandler.id}:${shardID}`)
 
-            }
+        //     }
 
-        }
+        // }
 
 
         // Unlock the coins and distribute to appropriate accounts
