@@ -382,7 +382,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
                     
                     if(threadContext === 'VERIFICATION_THREAD'){
 
-                        delete WORKING_THREADS.VERIFICATION_THREAD[poolPubKey]
+                        delete WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
                         
                     }
 
