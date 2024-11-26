@@ -6,7 +6,7 @@ import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../klyn74r.j
 
 import {setLeadersSequenceForShards} from './life/shards_leaders_monitoring.js'
 
-import {customLog, pathResolve, logColors} from '../../KLY_Utils/utils.js'
+import {customLog, pathResolve, logColors, blake3Hash} from '../../KLY_Utils/utils.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
@@ -112,10 +112,9 @@ export let WORKING_THREADS = {
 
     },
 
-
     GENERATION_THREAD: {
             
-        epochFullId:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef#-1',
+        epochFullId:`${blake3Hash('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'+BLOCKCHAIN_GENESIS.NETWORK_ID)}#-1`,
 
         epochIndex:0,
         
@@ -559,11 +558,14 @@ let setGenesisToState=async()=>{
     WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
 
 
+    let initEpochHash = blake3Hash('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'+BLOCKCHAIN_GENESIS.NETWORK_ID)
+
+
     WORKING_THREADS.VERIFICATION_THREAD.EPOCH = {
 
         id:0,
 
-        hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+        hash: initEpochHash,
 
         poolsRegistry:JSON.parse(JSON.stringify(poolsRegistryForEpochHandler)),
 
@@ -582,7 +584,7 @@ let setGenesisToState=async()=>{
 
         id:0,
 
-        hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+        hash: initEpochHash,
 
         poolsRegistry:JSON.parse(JSON.stringify(poolsRegistryForEpochHandler)),
 
@@ -597,21 +599,19 @@ let setGenesisToState=async()=>{
     }
 
 
-    let nullHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
-
     let vtEpochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
 
     let atEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
 
-    vtEpochHandler.quorum = await getCurrentEpochQuorum(vtEpochHandler.poolsRegistry,WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS,nullHash)
+    vtEpochHandler.quorum = await getCurrentEpochQuorum(vtEpochHandler.poolsRegistry,WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS,initEpochHash)
 
-    atEpochHandler.quorum = await getCurrentEpochQuorum(atEpochHandler.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS,nullHash)
+    atEpochHandler.quorum = await getCurrentEpochQuorum(atEpochHandler.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS,initEpochHash)
 
 
     // Finally, assign validators to shards for current epoch in APPROVEMENT_THREAD and VERIFICAION_THREAD
 
-    await setLeadersSequenceForShards(atEpochHandler,nullHash)
+    await setLeadersSequenceForShards(atEpochHandler,initEpochHash)
 
     vtEpochHandler.leadersSequence = JSON.parse(JSON.stringify(atEpochHandler.leadersSequence))
 
