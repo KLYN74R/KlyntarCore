@@ -1476,7 +1476,7 @@ export let startVerificationThread=async()=>{
 
 
     if(WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS?.[currentShardToCheck]){
-
+        
         
         /*
         
@@ -1514,26 +1514,32 @@ export let startVerificationThread=async()=>{
 
 
         // eslint-disable-next-line no-constant-condition
-        while(true){
+        while(true){            
 
             let poolPubKey = vtEpochHandler.leadersSequence[currentShardToCheck][handlerWithIndexToVerify.indexOfCurrentPoolToVerify]
 
-            localVtMetadataForPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey] || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
+            localVtMetadataForPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
 
             metadataFromAefpForThisPool = infoFromAefpAboutLastBlocksByPoolsOnShards[poolPubKey] || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
-            
 
 
             let weFinishedToVerifyPool = localVtMetadataForPool.index === metadataFromAefpForThisPool.index
 
-            let itsTheLastPoolInSequence = vtEpochHandler.leadersSequence[currentShardToCheck].length-1 === handlerWithIndexToVerify.indexOfCurrentPoolToVerify
-
 
             if(weFinishedToVerifyPool){
 
-                if(itsTheLastPoolInSequence) break
+                let itsTheLastPoolInSequence = vtEpochHandler.leadersSequence[currentShardToCheck].length === handlerWithIndexToVerify.indexOfCurrentPoolToVerify + 1
 
-                else {
+
+                if(itsTheLastPoolInSequence) {
+
+                    GLOBAL_CACHES.STUFF_CACHE.delete('CURRENT_TO_FINISH:'+currentShardToCheck)
+
+                    break
+
+                }
+
+                else {            
 
                     handlerWithIndexToVerify.indexOfCurrentPoolToVerify++
 
