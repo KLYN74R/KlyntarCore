@@ -541,6 +541,7 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
         if(!proofsGrabber){
 
             // Set the new handler with index 0(because each new epoch start with block index 0)
+            
             proofsGrabber = {
     
                 epochID:atEpochHandler.id,
