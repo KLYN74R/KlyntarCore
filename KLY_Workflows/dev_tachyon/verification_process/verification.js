@@ -758,6 +758,8 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
     
 
         // Nullify values for the upcoming epoch
+
+        WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL = {}
         
         for(let poolPubKey of WORKING_THREADS.VERIFICATION_THREAD.EPOCH.poolsRegistry){
 
@@ -1483,10 +1485,10 @@ export let startVerificationThread=async()=>{
 
             let poolPubKey = vtEpochHandler.leadersSequence[currentShardToCheck][handlerWithIndexToVerify.indexOfCurrentPoolToVerify]
 
-            localVtMetadataForPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
+            localVtMetadataForPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey] || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
 
             metadataFromAefpForThisPool = infoFromAefpAboutLastBlocksByPoolsOnShards[poolPubKey] || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
-
+            
 
 
             let weFinishedToVerifyPool = localVtMetadataForPool.index === metadataFromAefpForThisPool.index

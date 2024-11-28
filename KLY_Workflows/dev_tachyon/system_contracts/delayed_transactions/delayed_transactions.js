@@ -378,14 +378,6 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                     threadById.EPOCH.poolsRegistry.splice(indexOfThisPool, 1)
 
-                    // ... and in case tx is runned in VERIFICATION_THREAD context - remove pool from VERIFICATION_STATS_PER_POOL
-                    
-                    if(threadContext === 'VERIFICATION_THREAD'){
-
-                        delete WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
-                        
-                    }
-
                 }
 
             } else return {isOk:false,reason:`Impossbile to unstake because tx.creator not a staker`}
