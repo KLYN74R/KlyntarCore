@@ -40,12 +40,9 @@
             
         "ROUTE_TTL":{
     
-            "MAIN":{},
-    
             "API":{
     
                 "FROM_STATE":5,
-                "NODES":5,
                 "BLOCK":6000,
                 "POOL_STATS":5,
                 "LATEST_N_BLOCKS":5,
@@ -54,7 +51,6 @@
                 "SYNC_STATS":2,
                 "CHAIN_INFO":5,
                 "TX_RECEIPT":100,
-                "VERIFICATION_STATS_PER_POOL":5,
                 "DATA_ABOUT_EPOCH_ON_THREAD":5,
                 "GET_CURRENT_SHARD_LEADERS":5,
                 "GET_EPOCH_BY_INDEX":5,
