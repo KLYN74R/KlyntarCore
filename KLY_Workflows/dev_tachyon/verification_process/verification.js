@@ -813,7 +813,21 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
         WORKING_THREADS.VERIFICATION_THREAD.EPOCH.leadersSequence = nextEpochLeadersSequences
 
         
-        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH = { totalBlocksNumber:0, totalTxsNumber:0, successfulTxsNumber:0 }
+        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH = {
+            
+            totalBlocksNumber:0, totalTxsNumber:0, successfulTxsNumber:0,
+
+            newUserAccountsNumber:{
+                native:0,
+                evm:0
+            },
+
+            newSmartContractsNumber:{
+                native:0,
+                evm:0
+            },
+        
+        }
 
         
         // Commit the changes of state using atomic batch

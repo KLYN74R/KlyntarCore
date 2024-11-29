@@ -107,7 +107,17 @@ export let WORKING_THREADS = {
             
             totalTxsNumber:0,
 
-            successfulTxsNumber:0
+            successfulTxsNumber:0,
+
+            totalUserAccountsNumber:{
+                native:0,
+                evm:0
+            },
+
+            totalSmartContractsNumber:{
+                native:0,
+                evm:0
+            },
 
         },
 
@@ -117,7 +127,17 @@ export let WORKING_THREADS = {
             
             totalTxsNumber:0,
 
-            successfulTxsNumber:0
+            successfulTxsNumber:0,
+
+            newUserAccountsNumber:{
+                native:0,
+                evm:0
+            },
+
+            newSmartContractsNumber:{
+                native:0,
+                evm:0
+            },
 
         },
 
@@ -168,6 +188,7 @@ export let BLOCKCHAIN_DATABASES = {
 
 global.STATE = BLOCKCHAIN_DATABASES.STATE
 
+global.VERIFICATION_THREAD = WORKING_THREADS.VERIFICATION_THREAD
 
 
 
@@ -402,10 +423,19 @@ let setGenesisToState=async()=>{
                     if(isContract){
     
                         await KLY_EVM.putContract(evmKey,balance,nonce,code,storage)
+
+                        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalSmartContractsNumber.evm++
+
+                        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newSmartContractsNumber.evm++
     
                     }else{
                     
                         await KLY_EVM.putAccount(evmKey,balance,nonce)
+
+                        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.evm++
+
+                        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newUserAccountsNumber.evm++
+
                     }
 
 
@@ -465,6 +495,10 @@ let setGenesisToState=async()=>{
 
                 verificationThreadAtomicBatch.put(shardID+':'+accountID+'_BYTECODE',bytecode)
 
+                WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalSmartContractsNumber.native++
+
+                WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newSmartContractsNumber.native++
+
                 // Finally - write genesis storage of contract
 
                 for(let storageID of storages){
@@ -479,6 +513,10 @@ let setGenesisToState=async()=>{
                 // Else - it's default EOA account
 
                 verificationThreadAtomicBatch.put(shardID+':'+accountID,accountData)
+
+                WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.native++
+
+                WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newUserAccountsNumber.native++
 
             }
  
@@ -519,6 +557,10 @@ let setGenesisToState=async()=>{
                     recipientAccount.balance += BigInt(amountInWei)
     
                     await KLY_EVM.updateAccount(recipient,recipientAccount)
+
+                    WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.evm++
+
+                    WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newUserAccountsNumber.evm++
     
                 }    
 
