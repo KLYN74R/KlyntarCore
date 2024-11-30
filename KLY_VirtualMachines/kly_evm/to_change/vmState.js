@@ -146,25 +146,8 @@ class VmState {
 
         let lowerCaseAddressAsStringWithout0x = address.buf.toString('hex');
 
-        let bindedToShard = await global.GET_SHARD_ASSIGNMENT(lowerCaseAddressAsStringWithout0x);
 
-        // In case it's new contract and we don't have binding for it - bind to current context
-
-        if(!bindedToShard){
-
-            if(this.isSandboxExecution) bindedToShard = global.KLY_EVM_OPTIONS.bindContext
-
-            else {
-
-                global.ATOMIC_BATCH.put('EVM_ACCOUNT:'+lowerCaseAddressAsStringWithout0x,{shard:this.evmContext,gas:0})
-
-                bindedToShard = this.evmContext    
-
-            }
-
-        }
-
-        // In case it's sandbox call to filter txs - we use choosen context. It might be own context or some other one(for example, using Bumblebee tools for KLY Infra)
+        // In case it's sandbox call to filter txs - we use choosen context. It might be own context or some other one
 
         let evmExecutionContext = this.isSandboxExecution ? global.KLY_EVM_OPTIONS.bindContext : this.evmContext
 
@@ -176,15 +159,34 @@ class VmState {
 
         if(itsSpecialAccount) accountInTouchedList = true
 
-        if(bindedToShard !== evmExecutionContext){
-
-            throw new Error(`Account ${addressWith0xPrefix} binded to shard ${bindedToShard}, but you try to change the state of it via tx on shard ${evmExecutionContext}`)
-
-        }
-
         if(!accountInTouchedList){
 
             throw new Error(`Account ${addressWith0xPrefix} not in .touchedAccounts`)
+
+        }
+
+        
+        let bindedToShard = await global.GET_SHARD_ASSIGNMENT(lowerCaseAddressAsStringWithout0x);
+
+        // In case it's new contract and we don't have binding for it - bind to current context
+
+        if(!bindedToShard){
+
+            if(this.isSandboxExecution) bindedToShard = global.KLY_EVM_OPTIONS.bindContext
+
+            else {
+
+                global.STATE_CACHE.put('EVM_ACCOUNT:'+lowerCaseAddressAsStringWithout0x,{shard:this.evmContext,gas:0})
+
+                bindedToShard = this.evmContext    
+
+            }
+
+        }
+
+        if(bindedToShard !== evmExecutionContext){
+
+            throw new Error(`Account ${addressWith0xPrefix} binded to shard ${bindedToShard}, but you try to change the state of it via tx on shard ${evmExecutionContext}`)
 
         }
 

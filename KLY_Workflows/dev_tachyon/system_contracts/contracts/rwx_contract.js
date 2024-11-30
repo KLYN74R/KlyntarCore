@@ -13,7 +13,7 @@ export let gasUsedByMethod=methodID=>{
 
     if(methodID==='createContract') return 10000
 
-    else if(methodID==='executeBatchOfDelegations') return 10000
+    else if(methodID==='resolveContract') return 10000
 
 }
 
@@ -90,6 +90,12 @@ export let CONTRACT = {
 
         atomicBatch.put(originShard+':'+contractID+'_STORAGE_DEFAULT',futureRwxContractSingleStorage)
 
+
+        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.rwxContracts.total++
+
+        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.rwxContracts.total++
+
+
         return {isOk:true}
 
     },
@@ -97,7 +103,7 @@ export let CONTRACT = {
 
 
 
-    executeBatchOfDelegations:async(originShard,transaction,atomicBatch)=>{
+    resolveContract:async(originShard,transaction,atomicBatch)=>{
 
         // Here we simply execute array of delegations by contract parties dependent on solution and delete contract from state to mark deal as solved and prevent replay attacks
         // For stats it's possible to leave the fact of contract in separate DB
@@ -191,6 +197,12 @@ export let CONTRACT = {
                     atomicBatch.del(originShard+':'+rwxContractId)
     
                     atomicBatch.del(originShard+':'+rwxContractId+'_STORAGE_DEFAULT')
+
+
+                    WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.rwxContracts.closed++
+
+                    WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.rwxContracts.closed++
+
 
                     // Delete from cache too
 

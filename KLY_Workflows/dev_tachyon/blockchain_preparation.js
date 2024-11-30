@@ -102,6 +102,11 @@ export let WORKING_THREADS = {
                 evm:0
             },
 
+            rwxContracts:{
+                total:0,
+                closed:0
+            }
+
         },
 
         STATS_PER_EPOCH:{
@@ -121,6 +126,11 @@ export let WORKING_THREADS = {
                 native:0,
                 evm:0
             },
+
+            rwxContracts:{
+                total:0,
+                closed:0
+            }
 
         },
 
@@ -532,22 +542,22 @@ let setGenesisToState=async()=>{
                 }
 
                 if(recipient.startsWith('0x') && recipient.length === 42){
-    
-                    let unlockAmount = unlocksTable["0"]
-    
-                    let amountInWei = Math.round(unlockAmount * (10 ** 18))
-    
-                    WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH["0"][recipient] = unlockAmount
 
-                    let recipientAccount = await KLY_EVM.getAccount(recipient)
-    
-                    recipientAccount.balance += BigInt(amountInWei)
-    
-                    await KLY_EVM.updateAccount(recipient,recipientAccount)
+                    if(BLOCKCHAIN_GENESIS.EVM["shard_0"][recipient]){
 
-                    WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.evm++
+                        let unlockAmount = unlocksTable["0"]
+    
+                        let amountInWei = Math.round(unlockAmount * (10 ** 18))
+        
+                        WORKING_THREADS.VERIFICATION_THREAD.ALLOCATIONS_PER_EPOCH["0"][recipient] = unlockAmount
+    
+                        let recipientAccount = await KLY_EVM.getAccount(recipient)
+        
+                        recipientAccount.balance += BigInt(amountInWei)
+        
+                        await KLY_EVM.updateAccount(recipient,recipientAccount)
 
-                    WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newUserAccountsNumber.evm++
+                    } else throw new Error("You need to add the allocations recipient to BLOCKCHAIN_GENESIS.EVM['shard_0']")
     
                 }    
 
