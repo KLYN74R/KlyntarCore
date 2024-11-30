@@ -420,6 +420,12 @@ export let VERIFIERS = {
                 if(typeof tx.payload.rev_t === 'number') recipientAccount.rev_t = tx.payload.rev_t
 
                 else if(tx.payload.pqcPub) recipientAccount.pqcPub = tx.payload.pqcPub
+
+                GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+tx.payload.to,recipientAccount) // add to cache to collapse after all events in block
+
+                WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.native++
+
+                WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newUserAccountsNumber.native++
             
             }
 
@@ -467,12 +473,6 @@ export let VERIFIERS = {
                     } else {
 
                         recipientAccount.balance += amountForRecipient
-
-                        GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+tx.payload.to,recipientAccount) // add to cache to collapse after all events in block
-
-                        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.native++
-        
-                        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newUserAccountsNumber.native++
 
                     }
     
