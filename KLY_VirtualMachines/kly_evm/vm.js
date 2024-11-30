@@ -317,7 +317,6 @@ class KLY_EVM_CLASS {
 
 
     updateAccount=async(address,account)=>{
-
         
         let status = await this.vm.stateManager.putAccount(Address.fromString(address),account).then(()=>({status:true})).catch(()=>({status:false}))
 

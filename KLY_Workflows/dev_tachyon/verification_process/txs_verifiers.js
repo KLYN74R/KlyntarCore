@@ -372,7 +372,7 @@ export let VERIFIERS = {
 
         let senderAccount = await getUserAccountFromState(originShard+':'+tx.creator)
         
-        let recipientAccount = await getFromState(originShard+':'+tx.payload.to)
+        let recipientAccount = await getFromState(originShard+':'+tx.payload.to)    
 
         
         tx = await TXS_FILTERS.TX(tx,originShard) // pass through the filter
@@ -414,18 +414,12 @@ export let VERIFIERS = {
                     gas:0
                 
                 }
-
-                WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.native++
-
-                WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newUserAccountsNumber.native++
                 
                 // In case recipient is BLS multisig, we need to add one more field - "rev_t" (reverse threshold to account to allow to spend even in case REV_T number of pubkeys don't want to sign)
 
                 if(typeof tx.payload.rev_t === 'number') recipientAccount.rev_t = tx.payload.rev_t
 
                 else if(tx.payload.pqcPub) recipientAccount.pqcPub = tx.payload.pqcPub
-    
-                GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+tx.payload.to,recipientAccount) // add to cache to collapse after all events in block
             
             }
 
@@ -446,21 +440,39 @@ export let VERIFIERS = {
 
                     if(tx.payload.to.startsWith('0x') && tx.payload.to.length === 42){
 
+                        // Check if recipient is binded to same shard
+
+                        let lowerCaseAddressAsStringWithout0x = tx.payload.to.slice(2).toLowerCase()
+
+                        let recipientShardBinding = await getFromState(`EVM_ACCOUNT:${lowerCaseAddressAsStringWithout0x}`)
+
+                        if(!recipientShardBinding){
+
+                            recipientShardBinding = {shard:originShard,gas:0}
+
+                            GLOBAL_CACHES.STATE_CACHE.set(`EVM_ACCOUNT:${lowerCaseAddressAsStringWithout0x}`,{shard:originShard,gas:0})
+
+                            WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.evm++
+
+                            WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newUserAccountsNumber.evm++
+
+                        }
+
                         let amountInWei = Math.round(amountForRecipient * (10 ** 18));
 
                         recipientAccount.balance += BigInt(amountInWei);
 
                         await KLY_EVM.updateAccount(tx.payload.to,recipientAccount)
 
-                        // Add binding to shard in case it's new EVM
-
-                        let lowerCaseAddressAsStringWithout0x = tx.payload.to.slice(2).toLowerCase()
-
-                        atomicBatch.put(`EVM_ACCOUNT:${lowerCaseAddressAsStringWithout0x}`,{shard:originShard,gas:0})
-
                     } else {
 
                         recipientAccount.balance += amountForRecipient
+
+                        GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+tx.payload.to,recipientAccount) // add to cache to collapse after all events in block
+
+                        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.native++
+        
+                        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newUserAccountsNumber.native++
 
                     }
     
@@ -560,6 +572,11 @@ export let VERIFIERS = {
                     atomicBatch.put(originShard+':'+contractID+'_BYTECODE',tx.payload.bytecode)
     
                     atomicBatch.put(originShard+':'+contractID+'_STORAGE_DEFAULT',tx.payload.constructorParams.initStorage) // autocreate the default storage for contract
+
+
+                    WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalSmartContractsNumber.native++
+
+                    WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newSmartContractsNumber.native++
 
 
                     senderAccount.balance = Number((senderAccount.balance-goingToSpend.goingToSpendInNativeCurrency).toFixed(9))-0.000000001
@@ -754,7 +771,7 @@ export let VERIFIERS = {
     */
     EVM_CALL:async(originShard,txWithPayload,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
 
-        global.ATOMIC_BATCH = atomicBatch
+        global.STATE_CACHE = GLOBAL_CACHES.STATE_CACHE
 
         let evmResult = await KLY_EVM.callEVM(originShard,txWithPayload.payload)
 
@@ -797,6 +814,10 @@ export let VERIFIERS = {
                     touchedAccounts.push(receipt.contractAddress)
 
                     atomicBatch.put('EVM_CONTRACT_DATA:'+receipt.contractAddress,{storageAbstractionLastPayment:WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id})
+
+                    WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalSmartContractsNumber.evm++
+
+                    WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newSmartContractsNumber.evm++
                     
                 }
 
