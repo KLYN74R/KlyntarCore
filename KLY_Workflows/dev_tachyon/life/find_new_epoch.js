@@ -4,7 +4,7 @@ import {getCurrentEpochQuorum, getQuorumMajority, getQuorumUrlsAndPubkeys} from 
 
 import {CONTRACT_FOR_DELAYED_TRANSACTIONS} from '../system_contracts/delayed_transactions/delayed_transactions.js'
 
-import {verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
+import {getFirstBlockOnEpochOnSpecificShard, verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
 
 import {blake3Hash, logColors, customLog, pathResolve} from '../../../KLY_Utils/utils.js'
 
@@ -60,7 +60,17 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
     
     if(!epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)){
 
+        let verificationThreadEpochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
+
         let currentEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
+
+        if(currentEpochHandler.id - verificationThreadEpochHandler.id >= 2){
+
+            setTimeout(findAefpsAndFirstBlocksForCurrentEpoch,3000)
+    
+            return
+
+        }
 
         let currentEpochFullID = currentEpochHandler.hash+"#"+currentEpochHandler.id
     
@@ -211,6 +221,14 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                 // Structure is {firstBlockCreator,firstBlockHash}
             
                 let storedFirstBlockData = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCK:${currentEpochHandler.id}:${shardID}`).catch(()=>null)
+
+                if(!storedFirstBlockData){
+
+                    // Try to find via network requests
+
+                    storedFirstBlockData = await getFirstBlockOnEpochOnSpecificShard('APPROVEMENT_THREAD',currentEpochHandler,shardID,getBlock)
+
+                }
 
                 if(storedFirstBlockData){
 
