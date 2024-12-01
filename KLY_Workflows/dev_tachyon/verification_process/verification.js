@@ -952,7 +952,7 @@ let tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
             if(!handlerWithFirstBlocksPerShardOnNextEpoch[shardID].firstBlockCreator){
 
-                let findResult = await getFirstBlockOnEpochOnSpecificShard(nextEpochHandlerTemplate,shardID,getBlock)
+                let findResult = await getFirstBlockOnEpochOnSpecificShard('VERIFICATION_THREAD',nextEpochHandlerTemplate,shardID,getBlock)
 
                 if(findResult){
 

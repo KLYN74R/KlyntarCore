@@ -207,11 +207,11 @@ export let getVerifiedAggregatedFinalizationProofByBlockId = async (blockID,epoc
 
 
 
-export let getFirstBlockOnEpochOnSpecificShard = async(epochHandler,shardID,getBlockFunction) => {
+export let getFirstBlockOnEpochOnSpecificShard = async(threadID,epochHandler,shardID,getBlockFunction) => {
 
     // Check if we already tried to find first block by finding pivot in cache
 
-    let idOfHandlerWithFirstBlockPerShard = `${epochHandler.id}:${shardID}`
+    let idOfHandlerWithFirstBlockPerShard = `${threadID}:${epochHandler.id}:${shardID}`
 
     let pivotShardData = GLOBAL_CACHES.STUFF_CACHE.get(idOfHandlerWithFirstBlockPerShard) // {position,pivotPubKey,firstBlockByPivot,firstBlockHash}
 
