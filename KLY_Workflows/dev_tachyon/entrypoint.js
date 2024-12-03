@@ -1,12 +1,10 @@
 // 7 main threads - main core logic
 
-import {findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards} from './life/temp_vt_sequence_builder.js'
-
 import {shareBlocksAndGetFinalizationProofs} from './life/share_block_and_grab_proofs.js'
 
-import {startVerificationThread} from './verification_process/verification.js'
-
 import {findAefpsAndFirstBlocksForCurrentEpoch} from './life/find_new_epoch.js'
+
+import {startVerificationThread} from './verification_process/verification.js'
 
 import {shardsLeadersMonitoring} from './life/shards_leaders_monitoring.js'
 
@@ -51,10 +49,7 @@ export let runBlockchain=async()=>{
     //✅4.Thread to track changes of leaders on shards
     shardsLeadersMonitoring()
 
-    //✅5.Function to build the temporary sequence of blocks to verify them
-    findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards()
-
-    //✅6.Start to generate blocks
+    //✅5.Start to generate blocks
     blocksGenerationProcess()
 
 
