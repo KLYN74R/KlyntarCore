@@ -1,8 +1,8 @@
-import {NODE_METADATA, WORKING_THREADS} from './blockchain_preparation.js'
+import {NODE_METADATA, WORKING_THREADS} from '../blockchain_preparation.js'
 
-import {getUtcTimestamp} from '../../KLY_Utils/utils.js'
+import {getUtcTimestamp} from '../../../KLY_Utils/utils.js'
 
-import {CONFIGURATION} from '../../klyn74r.js'
+import {CONFIGURATION} from '../../../klyn74r.js'
 
 
 

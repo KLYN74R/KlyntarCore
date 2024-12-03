@@ -4,7 +4,7 @@ import {EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../blockchain_preparation
 
 import {blake3Hash, getUtcTimestamp} from '../../../KLY_Utils/utils.js'
 
-import {epochStillFresh} from '../utils.js'
+import {epochStillFresh} from '../common_functions/utils.js'
 
 
 

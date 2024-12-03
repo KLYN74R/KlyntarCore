@@ -10,7 +10,7 @@ import {customLog, pathResolve, logColors, blake3Hash} from '../../KLY_Utils/uti
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
-import {isMyCoreVersionOld} from './utils.js'
+import {isMyCoreVersionOld} from './common_functions/utils.js'
 
 import level from 'level'
 
@@ -78,8 +78,6 @@ export let WORKING_THREADS = {
 
         KLY_EVM_METADATA:{}, // shardID => {nextBlockIndex,parentHash,timestamp}
 
-
-        TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS:{},
 
         SID_TRACKER:{}, // shardID => index
 
@@ -185,7 +183,7 @@ global.VERIFICATION_THREAD = WORKING_THREADS.VERIFICATION_THREAD
 
 
 
-export let getCurrentShardLeaderURL = async shardID => {
+export let getCurrentShardLeaderURL = async () => {
 
     let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
     
@@ -193,24 +191,17 @@ export let getCurrentShardLeaderURL = async shardID => {
 
     let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
+    
     if(!currentEpochMetadata) return
 
-    let canGenerateBlocksNow = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
 
-    if(canGenerateBlocksNow) return {isMeShardLeader:true}
+    if(CONFIGURATION.NODE_LEVEL.BLOCK_GENERATOR_MODE) return {isMeShardLeader:true}
 
     else {
 
-        let indexOfCurrentLeaderForShard = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID) // {currentLeader:<id>}
-
-        let currentLeaderPubkey = epochHandler.leadersSequence[shardID][indexOfCurrentLeaderForShard.currentLeader]
-
         // Get the url of current shard leader on some shard
 
-        let poolStorage = GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.get(currentLeaderPubkey+'(POOL)_STORAGE_POOL')
-
-        poolStorage ||= await getFromApprovementThreadState(currentLeaderPubkey+'(POOL)_STORAGE_POOL').catch(()=>null)
-
+        let poolStorage = await getFromApprovementThreadState(CONFIGURATION.NODE_LEVEL.BLOCK_GENERATOR_PUBKEY+'(POOL)_STORAGE_POOL').catch(()=>null)
 
         if(poolStorage) return {isMeShardLeader:false,url:poolStorage.poolURL}
         
@@ -809,9 +800,6 @@ export let prepareBlockchain=async()=>{
         FINALIZATION_STATS:new Map(), // mapping( validatorID => {index,hash,afp} ). Used to know inde/hash of last approved block by validator.
         
         SYNCHRONIZER:new Map(), // used as mutex to prevent async changes of object | multiple operations with several await's | etc.
-
-        SHARDS_LEADERS_HANDLERS:new Map(), // shardID => {currentLeader:<number>} | Pool => shardID
-
 
         //____________________Mapping which contains temporary databases for____________________
 

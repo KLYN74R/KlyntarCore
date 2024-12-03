@@ -10,7 +10,7 @@ import {verifyEd25519} from '../../../KLY_Utils/utils.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
 
-import {epochStillFresh} from '../utils.js'
+import {epochStillFresh} from '../common_functions/utils.js'
 
 
 

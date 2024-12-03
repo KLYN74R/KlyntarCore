@@ -14,7 +14,7 @@ import {getFromState} from '../common_functions/state_interactions.js'
 
 import {getBlock} from '../verification_process/verification.js'
 
-import {epochStillFresh, isMyCoreVersionOld} from '../utils.js'
+import {epochStillFresh, isMyCoreVersionOld} from '../common_functions/utils.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
 
@@ -413,8 +413,6 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                     TEMP_CACHE:new Map(),
 
                     SYNCHRONIZER:new Map(),
-            
-                    SHARDS_LEADERS_HANDLERS:new Map(),
       
                     DATABASE:nextTempDB
             

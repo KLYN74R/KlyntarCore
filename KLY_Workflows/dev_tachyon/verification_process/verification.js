@@ -2,7 +2,7 @@ import {getFirstBlockOnEpochOnSpecificShard, verifyAggregatedFinalizationProof} 
 
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GRACEFUL_STOP, GLOBAL_CACHES} from '../blockchain_preparation.js'
 
-import {getAllKnownPeers, isMyCoreVersionOld, epochStillFresh, getRandomFromArray} from '../utils.js'
+import {getAllKnownPeers, isMyCoreVersionOld, epochStillFresh, getRandomFromArray} from '../common_functions/utils.js'
 
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 

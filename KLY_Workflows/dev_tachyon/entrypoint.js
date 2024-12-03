@@ -10,7 +10,7 @@ import {shardsLeadersMonitoring} from './life/shards_leaders_monitoring.js'
 
 import {checkIfItsTimeToStartNewEpoch} from './life/new_epoch_proposer.js'
 
-import {blocksGenerationProcess} from './life/block_generation.js'
+import {startBlockGenerationThread} from './life/block_generation.js'
 
 import {CONFIGURATION, BLOCKCHAIN_GENESIS} from '../../klyn74r.js'
 
@@ -50,7 +50,7 @@ export let runBlockchain=async()=>{
     shardsLeadersMonitoring()
 
     //✅5.Start to generate blocks
-    blocksGenerationProcess()
+    startBlockGenerationThread()
 
 
     
