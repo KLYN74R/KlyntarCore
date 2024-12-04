@@ -1,7 +1,5 @@
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, NODE_METADATA, WORKING_THREADS} from '../blockchain_preparation.js'
 
-import {getQuorumMajority} from '../common_functions/quorum_related.js'
-
 import {signEd25519} from '../../../KLY_Utils/utils.js'
 
 import {blockLog} from '../common_functions/logging.js'
@@ -46,21 +44,6 @@ let generateBlocksPortion = async() => {
 
     if(proofsGrabber && WORKING_THREADS.GENERATION_THREAD.epochFullId === epochFullID && WORKING_THREADS.GENERATION_THREAD.nextIndex > proofsGrabber.acceptedIndex+1) return
 
-    //_________________ Once we moved to new epoch - check the shard where this validator was assigned _________________
-
-    if(!currentEpochMetadata.TEMP_CACHE.has('MY_SHARD_FOR_THIS_EPOCH')){
-
-        for(let [shardID, poolsForShardOnThisEpoch] of Object.entries(epochHandler.leadersSequence)){
-
-            if(poolsForShardOnThisEpoch.includes(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)){
-
-                currentEpochMetadata.TEMP_CACHE.set('MY_SHARD_FOR_THIS_EPOCH',shardID)
-
-            }
-
-        }
-
-    }
 
     // Safe "if" branch to prevent unnecessary blocks generation
 
@@ -76,12 +59,6 @@ let generateBlocksPortion = async() => {
             WORKING_THREADS.GENERATION_THREAD.epochFullId = epochFullID
 
             WORKING_THREADS.GENERATION_THREAD.epochIndex = epochIndex
-
-            // Recount new values
-
-            WORKING_THREADS.GENERATION_THREAD.quorum = epochHandler.quorum
-
-            WORKING_THREADS.GENERATION_THREAD.majority = getQuorumMajority(epochHandler)
 
 
             // And nullish the index & hash in generation thread for new epoch
@@ -116,8 +93,8 @@ let generateBlocksPortion = async() => {
 
         let atomicBatch = BLOCKCHAIN_DATABASES.BLOCKS.batch()
 
-        for(let i=0;i<numberOfBlocksToGenerate;i++){
 
+        for(let i=0;i<numberOfBlocksToGenerate;i++){
 
             let blockCandidate = new Block(getTransactionsFromMempool(),extraData,WORKING_THREADS.GENERATION_THREAD.epochFullId)
                             

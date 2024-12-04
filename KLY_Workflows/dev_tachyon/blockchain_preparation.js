@@ -1,12 +1,12 @@
 import {getFromApprovementThreadState} from './common_functions/approvement_thread_related.js'
 
-import {getCurrentEpochQuorum, getQuorumMajority} from './common_functions/quorum_related.js'
-
 import {customLog, pathResolve, logColors, blake3Hash} from '../../KLY_Utils/utils.js'
 
 import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../klyn74r.js'
 
 import {setLeadersSequenceForShards} from './life/shards_leaders_monitoring.js'
+
+import {getCurrentEpochQuorum} from './common_functions/quorum_related.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
@@ -756,14 +756,6 @@ export let prepareBlockchain=async()=>{
 
     let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
 
-
-    if(WORKING_THREADS.GENERATION_THREAD.epochFullId === epochFullID && !WORKING_THREADS.GENERATION_THREAD.quorum){
-
-        WORKING_THREADS.GENERATION_THREAD.quorum = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum
-
-        WORKING_THREADS.GENERATION_THREAD.majority = getQuorumMajority(WORKING_THREADS.APPROVEMENT_THREAD.EPOCH)
-
-    }
 
     //_________________________________Add the temporary data of current AT__________________________________________
     

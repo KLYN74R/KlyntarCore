@@ -134,7 +134,7 @@ FASTIFY_SERVER.get('/epoch_by_index/:index',async(request,response)=>{
 
 // Returns stats - total number of blocks, total number of txs and number of succesful txs
 
-FASTIFY_SERVER.get('/total_blocks_and_txs_stats_per_epoch/:index',async(request,response)=>{
+FASTIFY_SERVER.get('/verification_thread_stats_per_epoch/:index',async(request,response)=>{
 
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.VT_STATS_PER_EPOCH){
 
