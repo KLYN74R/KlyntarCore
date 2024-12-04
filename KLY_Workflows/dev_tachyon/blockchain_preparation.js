@@ -2,11 +2,11 @@ import {getFromApprovementThreadState} from './common_functions/approvement_thre
 
 import {getCurrentEpochQuorum, getQuorumMajority} from './common_functions/quorum_related.js'
 
+import {customLog, pathResolve, logColors, blake3Hash} from '../../KLY_Utils/utils.js'
+
 import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../klyn74r.js'
 
 import {setLeadersSequenceForShards} from './life/shards_leaders_monitoring.js'
-
-import {customLog, pathResolve, logColors, blake3Hash} from '../../KLY_Utils/utils.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
@@ -260,25 +260,17 @@ let restoreMetadataCaches=async()=>{
 
     // Function to restore metadata since the last turn off
 
-    let poolsRegistry = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry
-
     let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
 
     let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
     
 
+    let poolPubKey = CONFIGURATION.NODE_LEVEL.BLOCK_GENERATOR_PUBKEY
 
-    for(let poolPubKey of poolsRegistry){
-
-        // If this value is related to the current epoch - set to manager, otherwise - take from the VERIFICATION_STATS_PER_POOL as a start point
-        // Returned value is {index,hash,(?)afp}
-
-        let {index,hash,afp} = await currentEpochMetadata.DATABASE.get(poolPubKey).catch(()=>null) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
-
+    let {index,hash,afp} = await currentEpochMetadata.DATABASE.get(poolPubKey).catch(()=>null) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
         
-        currentEpochMetadata.FINALIZATION_STATS.set(poolPubKey,{index,hash,afp})
+    currentEpochMetadata.FINALIZATION_STATS.set(poolPubKey,{index,hash,afp})
 
-    }
 
     // Finally, once we've started the "next epoch" process - restore it
 

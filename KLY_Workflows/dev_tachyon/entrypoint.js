@@ -6,8 +6,6 @@ import {findAefpsAndFirstBlocksForCurrentEpoch} from './life/find_new_epoch.js'
 
 import {startVerificationThread} from './verification_process/verification.js'
 
-import {shardsLeadersMonitoring} from './life/shards_leaders_monitoring.js'
-
 import {checkIfItsTimeToStartNewEpoch} from './life/new_epoch_proposer.js'
 
 import {startBlockGenerationThread} from './life/block_generation.js'
@@ -34,20 +32,17 @@ export let runBlockchain=async()=>{
 
     //_________________________ RUN SEVERAL ASYNC THREADS _________________________
 
-    //✅0.Start verification process - process blocks and find new epoch step-by-step
+    //✅1.Start verification process - process blocks and find new epoch step-by-step
     startVerificationThread()
 
-    //✅1.Thread to find AEFPs and change the epoch for AT
+    //✅2.Thread to find AEFPs and change the epoch for AT
     findAefpsAndFirstBlocksForCurrentEpoch()
 
-    //✅2.Share our blocks within quorum members and get the finalization proofs
+    //✅3.Share our blocks within quorum members and get the finalization proofs
     shareBlocksAndGetFinalizationProofs()
 
-    //✅3.Thread to propose AEFPs to move to next epoch
+    //✅4.Thread to propose AEFPs to move to next epoch
     checkIfItsTimeToStartNewEpoch()
-
-    //✅4.Thread to track changes of leaders on shards
-    shardsLeadersMonitoring()
 
     //✅5.Start to generate blocks
     startBlockGenerationThread()
