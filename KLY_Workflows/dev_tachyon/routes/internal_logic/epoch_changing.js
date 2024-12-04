@@ -1,40 +1,11 @@
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
-
 import {verifyAggregatedFinalizationProof} from '../../common_functions/work_with_proofs.js'
+
+import {EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
 
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 import {signEd25519} from '../../../../KLY_Utils/utils.js'
 
-
-
-
-
-/*
-
-[Info]:
-
-    Accept epoch index and shard to return own assumption about the first block
-
-[Returns]:
-
-    {indexOfFirstBlockCreator, afpForSecondBlock}
-
-*/
-
-// Function to return assumption about the first block in epoch on specific shard
-
-FASTIFY_SERVER.get('/first_block_assumption/:epoch_index/:shard',async(request,response)=>{
-
-    let firstBlockAssumption = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCK_ASSUMPTION:${request.params.epoch_index}:${request.params.shard}`).catch(()=>null)
-        
-    if(firstBlockAssumption){
-
-        response.send(firstBlockAssumption)
-
-    }else response.send({err:'No assumptions found'})
-
-})
 
 
 

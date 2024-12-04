@@ -381,7 +381,7 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
 
     // If we don't generate the blocks - skip this function
     
-    if(CONFIGURATION.NODE_LEVEL.BLOCK_GENERATOR_MODE){
+    if(!CONFIGURATION.NODE_LEVEL.BLOCK_GENERATOR_MODE){
 
         setTimeout(shareBlocksAndGetFinalizationProofs,2000)
 
