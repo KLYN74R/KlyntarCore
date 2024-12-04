@@ -817,8 +817,6 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
         delete WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS
 
         // Delete the useless temporary info from previous epoch about indexes/hashes to verify on shards
-        
-        delete WORKING_THREADS.VERIFICATION_THREAD.TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS[vtEpochFullID]
 
 
         GLOBAL_CACHES.STUFF_CACHE.delete('SHARDS_READY_TO_NEW_EPOCH')

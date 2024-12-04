@@ -45,10 +45,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
         for(let shardID of Object.keys(atEpochHandler.leadersSequence)){
 
-            let dataAboutCurrentLeaderOnShard = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID) || {currentLeader:0}
-
-            let pubKeyOfLeader = atEpochHandler.leadersSequence[shardID][dataAboutCurrentLeaderOnShard.currentLeader]
-
+            let pubKeyOfLeader = atEpochHandler.leadersSequence[shardID][0]
 
             if(currentEpochMetadata.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+pubKeyOfLeader)){
 
