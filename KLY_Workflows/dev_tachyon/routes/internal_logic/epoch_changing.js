@@ -1,40 +1,11 @@
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
-
 import {verifyAggregatedFinalizationProof} from '../../common_functions/work_with_proofs.js'
+
+import {EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
 
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 import {signEd25519} from '../../../../KLY_Utils/utils.js'
 
-
-
-
-
-/*
-
-[Info]:
-
-    Accept epoch index and shard to return own assumption about the first block
-
-[Returns]:
-
-    {indexOfFirstBlockCreator, afpForSecondBlock}
-
-*/
-
-// Function to return assumption about the first block in epoch on specific shard
-
-FASTIFY_SERVER.get('/first_block_assumption/:epoch_index/:shard',async(request,response)=>{
-
-    let firstBlockAssumption = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCK_ASSUMPTION:${request.params.epoch_index}:${request.params.shard}`).catch(()=>null)
-        
-    if(firstBlockAssumption){
-
-        response.send(firstBlockAssumption)
-
-    }else response.send({err:'No assumptions found'})
-
-})
 
 
 
@@ -68,126 +39,6 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
     }
     
-    /* 
-    
-        Parse the proposition
-
-        !Reminder:  The structure of proposition is:
-
-        {
-                
-            "shard0":{
-
-                currentLeader:<int - pointer to current leader of shard based on AT.EPOCH.leadersSequence[shardID]>
-                
-                afpForFirstBlock:{
-
-                    prevBlockHash,
-                    blockID,
-                    blockHash,
-
-                    proofs:{
-                     
-                        pubKey0:signa0,         => prevBlockHash+blockID+hash+AT.EPOCH.hash+"#"+AT.EPOCH.id
-                        ...
-                        
-                    }
-
-                },
-
-                lastBlockProposition:{
-                    
-                    index:,
-                    hash:,
-
-                    afp:{
-
-                        prevBlockHash,
-                        blockID,
-                        blockHash,
-
-                        proofs:{
-                     
-                            pubKey0:signa0,         => prevBlockHash+blockID+hash+AT.EPOCH.hash+"#"+AT.EPOCH.id
-                            ...
-                        
-                        }                        
-
-                    }
-                    
-                }
-
-            },
-
-            "shard1":{
-                ...            
-            }
-
-            ...
-                    
-            "shardN":{
-                ...
-            }
-                
-        }
-
-
-        1) We need to iterate over propositions(per shard)
-        2) Compare <currentLeader> with our local version of current leader on shard(take it from currentEpochMetadata.SHARDS_LEADERS_HANDLERS)
-        
-            [If proposed.currentLeader >= local.currentLeader]:
-
-                1) Verify index & hash & afp in <lastBlockProposition>
-                
-                2) If proposed height >= local version - generate and return signature ED25519_SIG('EPOCH_DONE'+shard+lastAuth+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId)
-
-                3) Else - send status:'UPGRADE' with local version of finalization proof, index and hash(take it from currentEpochMetadata.FINALIZATION_STATS)
-
-            [Else if proposed.currentLeader < local.currentLeader AND currentEpochMetadata.FINALIZATION_STATS.has(local.currentLeader)]:
-
-                1) Send status:'UPGRADE' with local version of currentLeader, metadata for epoch(from currentEpochMetadata.FINALIZATION_STATS), index and hash
-
-
-
-        !Reminder: Response structure is
-
-        {
-            
-            shardA:{
-                                
-                status:'UPGRADE'|'OK',
-
-                -------------------------------[In case status === 'OK']-------------------------------
-
-                signa: SIG('EPOCH_DONE'+shard+lastAuth+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId)
-                        
-                ----------------------------[In case status === 'UPGRADE']-----------------------------
-
-                currentLeader:<index>,
-                
-                lastBlockProposition:{
-                
-                    index,
-                    hash,
-                    afp
-                
-                }   
-
-            },
-
-            shardB:{
-                ...(same)
-            },
-            ...,
-            shardQ:{
-                ...(same)
-            }
-    
-        }
-
-
-    */
-   
 
     let possiblePropositionForNewEpoch = JSON.parse(request.body)
 
@@ -203,9 +54,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
             if(typeof shardID === 'string' && typeof proposition.currentLeader === 'number' && typeof proposition.afpForFirstBlock === 'object' && typeof proposition.lastBlockProposition === 'object' && typeof proposition.lastBlockProposition.afp === 'object'){
 
-                // Get the local version of SHARDS_LEADERS_HANDLERS and FINALIZATION_STATS
-
-                let leadersHandlerForThisShard = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID) // {currentLeader:<uint>}
+                let leadersHandlerForThisShard = {currentLeader:0}
 
                 let localIndexOfLeader = leadersHandlerForThisShard.currentLeader
 
@@ -280,8 +129,6 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
                             
                                 if(leadersHandlerForThisShard) leadersHandlerForThisShard.currentLeader = proposition.currentLeader
-
-                                else currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(shardID,{currentLeader:proposition.currentLeader})
     
 
                                 if(epochManagerForLeader){

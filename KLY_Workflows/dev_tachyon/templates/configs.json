@@ -3,6 +3,9 @@
     
         "PUBLIC_KEY":"9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK",
         "PRIVATE_KEY":"MC4CAQAwBQYDK2VwBCIEILdhTMVYFz2GP8+uKUA+1FnZTEdN8eHFzbb8400cpEU9",
+
+        "BLOCK_GENERATOR_MODE": false,
+        "BLOCK_GENERATOR_PUBKEY": "9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK",
     
         "MY_KLY_INFRASTRUCTURE":{
             
@@ -22,9 +25,6 @@
         },
     
         "WAIT_IF_CANT_FIND_AEFP":4000,
-    
-        "POLLING_TIMEOUT_TO_FIND_AEFP_FOR_QUORUM_THREAD":10000,
-        "TIMEOUT_TO_FIND_TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS":10000,
     
         "TXS_MEMPOOL_SIZE":300000,
         "BLOCK_TO_BLOCK_CACHE_SIZE":100000,
@@ -91,7 +91,6 @@
                 "SYNC_STATS":1,
                 "CHAIN_INFO":1,
                 "TX_RECEIPT":1,
-                "VERIFICATION_STATS_PER_POOL":1,
                 "DATA_ABOUT_EPOCH_ON_THREAD":1,
                 "GET_CURRENT_SHARD_LEADERS":1,
                 "GET_EPOCH_BY_INDEX":1,

@@ -1,16 +1,16 @@
 import {getFromApprovementThreadState} from './common_functions/approvement_thread_related.js'
 
-import {getCurrentEpochQuorum, getQuorumMajority} from './common_functions/quorum_related.js'
+import {customLog, pathResolve, logColors, blake3Hash} from '../../KLY_Utils/utils.js'
 
 import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../klyn74r.js'
 
 import {setLeadersSequenceForShards} from './life/shards_leaders_monitoring.js'
 
-import {customLog, pathResolve, logColors, blake3Hash} from '../../KLY_Utils/utils.js'
+import {getCurrentEpochQuorum} from './common_functions/quorum_related.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
-import {isMyCoreVersionOld} from './utils.js'
+import {isMyCoreVersionOld} from './common_functions/utils.js'
 
 import level from 'level'
 
@@ -95,8 +95,6 @@ export let WORKING_THREADS = {
 
         KLY_EVM_METADATA:{}, // shardID => {nextBlockIndex,parentHash,timestamp}
 
-
-        TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS:{},
 
         SID_TRACKER:{}, // shardID => index
 
@@ -202,7 +200,7 @@ global.VERIFICATION_THREAD = WORKING_THREADS.VERIFICATION_THREAD
 
 
 
-export let getCurrentShardLeaderURL = async shardID => {
+export let getCurrentShardLeaderURL = async () => {
 
     let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
     
@@ -210,24 +208,17 @@ export let getCurrentShardLeaderURL = async shardID => {
 
     let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
+    
     if(!currentEpochMetadata) return
 
-    let canGenerateBlocksNow = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
 
-    if(canGenerateBlocksNow) return {isMeShardLeader:true}
+    if(CONFIGURATION.NODE_LEVEL.BLOCK_GENERATOR_MODE) return {isMeShardLeader:true}
 
     else {
 
-        let indexOfCurrentLeaderForShard = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID) // {currentLeader:<id>}
-
-        let currentLeaderPubkey = epochHandler.leadersSequence[shardID][indexOfCurrentLeaderForShard.currentLeader]
-
         // Get the url of current shard leader on some shard
 
-        let poolStorage = GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.get(currentLeaderPubkey+'(POOL)_STORAGE_POOL')
-
-        poolStorage ||= await getFromApprovementThreadState(currentLeaderPubkey+'(POOL)_STORAGE_POOL').catch(()=>null)
-
+        let poolStorage = await getFromApprovementThreadState(CONFIGURATION.NODE_LEVEL.BLOCK_GENERATOR_PUBKEY+'(POOL)_STORAGE_POOL').catch(()=>null)
 
         if(poolStorage) return {isMeShardLeader:false,url:poolStorage.poolURL}
         
@@ -286,35 +277,17 @@ let restoreMetadataCaches=async()=>{
 
     // Function to restore metadata since the last turn off
 
-    let poolsRegistry = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry
-
     let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
 
     let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
     
 
+    let poolPubKey = CONFIGURATION.NODE_LEVEL.BLOCK_GENERATOR_PUBKEY
 
-    for(let poolPubKey of poolsRegistry){
-
-        let {index,hash,afp} = await currentEpochMetadata.DATABASE.get(poolPubKey).catch(()=>null) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+    let {index,hash,afp} = await currentEpochMetadata.DATABASE.get(poolPubKey).catch(()=>null) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
         
-        currentEpochMetadata.FINALIZATION_STATS.set(poolPubKey,{index,hash,afp})
+    currentEpochMetadata.FINALIZATION_STATS.set(poolPubKey,{index,hash,afp})
 
-    }
-
-    for(let shardID of WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.shardsRegistry){
-
-        let leadersHandler = await currentEpochMetadata.DATABASE.get('LEADERS_HANDLER:'+shardID).catch(()=>({currentLeader:0}))
-
-        currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(shardID,leadersHandler)
-
-        // Using pointer - find the current leader
-
-        let currentLeaderPubKey = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence[shardID][leadersHandler.currentLeader]
-
-        currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(currentLeaderPubKey,shardID)
-        
-    }
 
     // Finally, once we've started the "next epoch" process - restore it
 
@@ -355,6 +328,13 @@ let setGenesisToState=async()=>{
 
 
 
+    WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[
+        
+        CONFIGURATION.NODE_LEVEL.BLOCK_GENERATOR_PUBKEY
+    
+    ] = {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
+
+
     //__________________________________ Load info about pools __________________________________
 
 
@@ -362,12 +342,7 @@ let setGenesisToState=async()=>{
 
         let bindToShard = poolContractStorage.shard
 
-        // Create the value in VT
-
-        WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey] = {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
-
-
-        // Create the appropriate storage for pre-set pools. We'll create the simplest variant - but pools will have ability to change it via txs during the chain work
+        //Create the appropriate storage for pre-set pools. We'll create the simplest variant - but pools will have ability to change it via txs during the chain work
         
         let contractMetadataTemplate = {
 
@@ -680,7 +655,7 @@ let setGenesisToState=async()=>{
 
     // Finally, assign validators to shards for current epoch in APPROVEMENT_THREAD and VERIFICAION_THREAD
 
-    await setLeadersSequenceForShards(atEpochHandler,initEpochHash)
+    await setLeadersSequenceForShards(atEpochHandler)
 
     vtEpochHandler.leadersSequence = JSON.parse(JSON.stringify(atEpochHandler.leadersSequence))
 
@@ -805,14 +780,6 @@ export let prepareBlockchain=async()=>{
     let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
 
 
-    if(WORKING_THREADS.GENERATION_THREAD.epochFullId === epochFullID && !WORKING_THREADS.GENERATION_THREAD.quorum){
-
-        WORKING_THREADS.GENERATION_THREAD.quorum = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum
-
-        WORKING_THREADS.GENERATION_THREAD.majority = getQuorumMajority(WORKING_THREADS.APPROVEMENT_THREAD.EPOCH)
-
-    }
-
     //_________________________________Add the temporary data of current AT__________________________________________
     
     let temporaryDatabaseForApprovementThread = level(process.env.CHAINDATA_PATH+`/${epochFullID}`,{valueEncoding:'json'})
@@ -826,9 +793,6 @@ export let prepareBlockchain=async()=>{
         FINALIZATION_STATS:new Map(), // mapping( validatorID => {index,hash,afp} ). Used to know inde/hash of last approved block by validator.
         
         SYNCHRONIZER:new Map(), // used as mutex to prevent async changes of object | multiple operations with several await's | etc.
-
-        SHARDS_LEADERS_HANDLERS:new Map(), // shardID => {currentLeader:<number>} | Pool => shardID
-
 
         //____________________Mapping which contains temporary databases for____________________
 

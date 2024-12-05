@@ -196,7 +196,7 @@ FASTIFY_SERVER.get('/latest_n_blocks/:shard/:start_index/:limit',async(request,r
 
 // Returns stats - total number of blocks, total number of txs and number of succesful txs
 
-FASTIFY_SERVER.get('/total_blocks_and_txs_stats',(_,response)=>{
+FASTIFY_SERVER.get('/verification_thread_stats',(_,response)=>{
 
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.VT_TOTAL_STATS){
 

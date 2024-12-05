@@ -1,4 +1,4 @@
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../blockchain_preparation.js'
 
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
@@ -89,33 +89,9 @@ FASTIFY_SERVER.get('/current_shards_leaders',(_request,response)=>{
             .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.GET_CURRENT_SHARD_LEADERS}`)
             
         
-        let responseObj = {}
-
-        // Get the current epoch metadata
-
         let atEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
-        
-        let epochFullID = atEpochHandler.hash+"#"+atEpochHandler.id
 
-        let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
-
-
-        // Iterate over shards to get information about current leader
-
-        for(let shardID of Object.keys(atEpochHandler.leadersSequence)){
-
-            let currentShardLeader = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID) || {currentLeader:0}
-
-            // Once we know index => get the pubkey
-            
-            let pubKeyOfLeader = atEpochHandler.leadersSequence[shardID][currentShardLeader.currentLeader]
-
-            responseObj[shardID] = pubKeyOfLeader
-
-
-        }
-
-        response.send(responseObj)
+        response.send(atEpochHandler.leadersSequence)
 
     }else response.send({err:'Route is off'})
 
@@ -158,7 +134,7 @@ FASTIFY_SERVER.get('/epoch_by_index/:index',async(request,response)=>{
 
 // Returns stats - total number of blocks, total number of txs and number of succesful txs
 
-FASTIFY_SERVER.get('/total_blocks_and_txs_stats_per_epoch/:index',async(request,response)=>{
+FASTIFY_SERVER.get('/verification_thread_stats_per_epoch/:index',async(request,response)=>{
 
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.VT_STATS_PER_EPOCH){
 

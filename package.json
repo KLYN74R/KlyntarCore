@@ -23,6 +23,7 @@
   "homepage": "https://github.com/KLYN74R/KlyntarCore#readme",
   "dependencies": {
     "@assemblyscript/loader": "^0.20.19",
+    "@ethereumjs/tx": "4.1.2",
     "@fastify/cors": "^9.0.1",
     "@idena/vrf-js": "^1.0.1",
     "@klyntar/klyntarevmjsonrpc": "^3.6.0",
@@ -52,6 +53,8 @@
     "@ethereumjs/tx": "^4.0.0",
     "@ethersproject/abi": "^5.7.0",
     "@solana/web3.js": "^1.87.6",
+    "chart.js": "^4.4.7",
+    "chartjs-node-canvas": "^4.1.6",
     "eslint": "^8.56.0",
     "ethereumjs-common": "^1.5.2",
     "ethereumjs-tx": "^2.1.2",

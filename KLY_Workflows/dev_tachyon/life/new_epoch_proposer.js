@@ -10,7 +10,7 @@ import {verifyEd25519} from '../../../KLY_Utils/utils.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
 
-import {epochStillFresh} from '../utils.js'
+import {epochStillFresh} from '../common_functions/utils.js'
 
 
 
@@ -45,10 +45,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
         for(let shardID of Object.keys(atEpochHandler.leadersSequence)){
 
-            let dataAboutCurrentLeaderOnShard = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID) || {currentLeader:0}
-
-            let pubKeyOfLeader = atEpochHandler.leadersSequence[shardID][dataAboutCurrentLeaderOnShard.currentLeader]
-
+            let pubKeyOfLeader = atEpochHandler.leadersSequence[shardID][0]
 
             if(currentEpochMetadata.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+pubKeyOfLeader)){
 
@@ -93,7 +90,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
     
         for(let [shardID,arrayOfPools] of Object.entries(leadersSequencePerShard)){
 
-            let handlerWithIndexOfCurrentLeaderOnShard = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID) || {currentLeader:0}// {currentLeader:<number>}
+            let handlerWithIndexOfCurrentLeaderOnShard = {currentLeader:0}
 
             let pubKeyOfLeader = arrayOfPools[handlerWithIndexOfCurrentLeaderOnShard.currentLeader]
             
@@ -156,100 +153,6 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
                 agreements.set(shardID,agreementsForThisShard)
             
             }
-
-
-            /*
-            
-                Thanks to verification process of block 0 on route POST /block (see routes/main.js) we know that each block created by shard leader will contain all the ALRPs
-        
-                1) Start to build epoch finalization proposition. This object has the following structure
-
-
-                {
-                
-                    "shard0":{
-
-                        currentLeader:<int - pointer to current leader of shard based on AT.EPOCH.leadersSequence[shardID]>
-
-                        lastBlockProposition:{
-                            index:,
-                            hash:,
-                            
-                            afp:{
-
-                                prevBlockHash:<must be the same as lastBlockProposition.hash>
-
-                                blockID:<must be next to lastBlockProposition.index>,
-
-                                blockHash,
-
-                                proofs:{
-
-                                    quorumMember0_Ed25519PubKey: ed25519Signa0,
-                                    ...
-                                    quorumMemberN_Ed25519PubKey: ed25519SignaN
-                
-                                }
-
-                            }
-                    
-                        }
-
-                    },
-
-                    "shard1":{
-                        
-                    }
-
-                    ...
-                    
-                    "shardN":{
-                        ...
-                    }
-                
-                }
-
-
-                2) Take the <lastBlockProposition> for <currentLeader> from TEMP.get(<epochFullID>).FINALIZATION_STATS
-
-                3) If nothing in FINALIZATION_STATS - then set index to -1 and hash to default(0123...)
-
-                4) Send epoch propostion to POST /epoch_proposition to all(or at least 2/3N+1) quorum members
-
-
-                ____________________________________________After we get responses____________________________________________
-
-                5) If validator agree with all the propositions - it generate signatures for all the shard to paste this short proof to the fist block in the next epoch(to section block.extraData.aefpForPreviousEpoch)
-
-                6) If we get 2/3N+1 agreements for ALL the shards - aggregate it and store locally. This called AGGREGATED_EPOCH_FINALIZATION_PROOF (AEFP)
-
-                    The structure is
-
-
-                       {
-                
-                            lastLeader:<index of Ed25519 pubkey of some pool in sequence of validators for this shard>,
-                            lastIndex:<index of his block in previous epoch>,
-                            lastHash:<hash of this block>,
-                            firstBlockHash,
-
-                            proofs:{
-
-                                ed25519PubKey0:ed25519Signa0,
-                                ...
-                                ed25519PubKeyN:ed25519SignaN
-                         
-                            }
-
-                        }
-
-
-                7) Then, we can share these proofs by route GET /aggregated_epoch_finalization_proof/:EPOCH_ID/:SHARD_ID
-
-                8) Pools on each shard can query network for this proofs to set to <block.extraData.aefpForPreviousEpoch> to know where to start VERIFICATION_THREAD in a new epoch                
-                
-
-            */
          
             let aefpExistsLocally = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${atEpochHandler.id}:${shardID}`).catch(()=>false)
 
