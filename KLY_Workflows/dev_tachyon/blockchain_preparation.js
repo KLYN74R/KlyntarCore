@@ -311,17 +311,19 @@ let setGenesisToState=async()=>{
 
 
 
+    WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[
+        
+        CONFIGURATION.NODE_LEVEL.BLOCK_GENERATOR_PUBKEY
+    
+    ] = {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
+
+
     //__________________________________ Load info about pools __________________________________
 
 
     for(let [poolPubKey,poolContractStorage] of Object.entries(BLOCKCHAIN_GENESIS.POOLS)){
 
         let bindToShard = poolContractStorage.shard
-
-        // Create the value in VT
-
-        WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey] = {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
-
 
         //Create the appropriate storage for pre-set pools. We'll create the simplest variant - but pools will have ability to change it via txs during the chain work
         
