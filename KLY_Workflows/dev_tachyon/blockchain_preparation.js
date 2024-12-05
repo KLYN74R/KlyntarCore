@@ -632,7 +632,7 @@ let setGenesisToState=async()=>{
 
     // Finally, assign validators to shards for current epoch in APPROVEMENT_THREAD and VERIFICAION_THREAD
 
-    await setLeadersSequenceForShards(atEpochHandler,initEpochHash)
+    await setLeadersSequenceForShards(atEpochHandler)
 
     vtEpochHandler.leadersSequence = JSON.parse(JSON.stringify(atEpochHandler.leadersSequence))
 

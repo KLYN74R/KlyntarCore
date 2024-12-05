@@ -371,7 +371,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
                 // After execution - assign pools(validators) to shards
 
-                await setLeadersSequenceForShards(currentEpochHandler,nextEpochHash)
+                await setLeadersSequenceForShards(currentEpochHandler)
 
                 
                 await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_LEADERS_SEQUENCES:${nextEpochId}`,WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence).catch(()=>{})
