@@ -1426,13 +1426,13 @@ let getPreparedTxsForParallelization = txsArray => {
 
 export let startVerificationThread=async()=>{
 
-    let shardsIdentifiers = GLOBAL_CACHES.STATE_CACHE.get('SHARDS_IDS')
+    let shardsIdentifiers = GLOBAL_CACHES.STUFF_CACHE.get('SHARDS_IDS')
 
     if(!shardsIdentifiers){
 
         shardsIdentifiers = Object.keys(WORKING_THREADS.VERIFICATION_THREAD.EPOCH.leadersSequence)
 
-        GLOBAL_CACHES.STATE_CACHE.set('SHARDS_IDS',shardsIdentifiers)
+        GLOBAL_CACHES.STUFF_CACHE.set('SHARDS_IDS',shardsIdentifiers)
 
     }
 
