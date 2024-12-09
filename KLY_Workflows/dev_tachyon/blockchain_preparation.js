@@ -68,8 +68,6 @@ export let GLOBAL_CACHES = {
 export let WORKING_THREADS = {
 
     VERIFICATION_THREAD: {
-            
-        SHARD_POINTER:'',
 
         VERIFICATION_STATS_PER_POOL:{}, // PUBKEY => {index:int,hash:''}
 
@@ -323,7 +321,7 @@ let setGenesisToState=async()=>{
 
     for(let [poolPubKey,poolContractStorage] of Object.entries(BLOCKCHAIN_GENESIS.POOLS)){
 
-        let bindToShard = poolContractStorage.shard
+        let bindToShard = BLOCKCHAIN_GENESIS.SHARD
 
         //Create the appropriate storage for pre-set pools. We'll create the simplest variant - but pools will have ability to change it via txs during the chain work
         
@@ -436,58 +434,54 @@ let setGenesisToState=async()=>{
 
     //_______________________ Now add the data to state _______________________
 
-    for(let [shardID, collectionOfAccountsToBindToShard] of Object.entries(BLOCKCHAIN_GENESIS.STATE)){
+    for(let [accountID, accountData] of Object.entries(BLOCKCHAIN_GENESIS.STATE)){
 
-        // Now iterate over objects
+        let shardID = BLOCKCHAIN_GENESIS.SHARD
 
-        for(let [accountID, accountData] of Object.entries(collectionOfAccountsToBindToShard)){
+        if(accountData.type === 'contract'){
 
-            if(accountData.type === 'contract'){
+            let {lang,balance,gas,storages,bytecode,storageAbstractionLastPayment} = accountData
 
-                let {lang,balance,gas,storages,bytecode,storageAbstractionLastPayment} = accountData
+            let contractMeta = {
 
-                let contractMeta = {
+                type:'contract',
+                lang,
+                balance,
+                gas,
+                storages,
+                storageAbstractionLastPayment
+            
+            } 
 
-                    type:'contract',
-                    lang,
-                    balance,
-                    gas,
-                    storages,
-                    storageAbstractionLastPayment
-                
-                } 
+            // Write metadata first
+            
+            verificationThreadAtomicBatch.put(shardID+':'+accountID,contractMeta)
 
-                // Write metadata first
-                
-                verificationThreadAtomicBatch.put(shardID+':'+accountID,contractMeta)
+            verificationThreadAtomicBatch.put(shardID+':'+accountID+'_BYTECODE',bytecode)
 
-                verificationThreadAtomicBatch.put(shardID+':'+accountID+'_BYTECODE',bytecode)
+            WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalSmartContractsNumber.native++
 
-                WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalSmartContractsNumber.native++
+            WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newSmartContractsNumber.native++
 
-                WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newSmartContractsNumber.native++
+            // Finally - write genesis storage of contract
 
-                // Finally - write genesis storage of contract
+            for(let storageID of storages){
 
-                for(let storageID of storages){
-
-                    verificationThreadAtomicBatch.put(shardID+':'+accountID+'_STORAGE_'+storageID,accountData[storageID])
-
-                }
-
-
-            } else {
-
-                // Else - it's default EOA account
-
-                verificationThreadAtomicBatch.put(shardID+':'+accountID,accountData)
-
-                WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.native++
-
-                WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newUserAccountsNumber.native++
+                verificationThreadAtomicBatch.put(shardID+':'+accountID+'_STORAGE_'+storageID,accountData[storageID])
 
             }
- 
+
+
+        } else {
+
+            // Else - it's default EOA account
+
+            verificationThreadAtomicBatch.put(shardID+':'+accountID,accountData)
+
+            WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.native++
+
+            WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newUserAccountsNumber.native++
+
         }
 
     }
@@ -514,7 +508,7 @@ let setGenesisToState=async()=>{
 
                 if(recipient.startsWith('0x') && recipient.length === 42){
 
-                    if(BLOCKCHAIN_GENESIS.EVM["shard_0"][recipient]){
+                    if(BLOCKCHAIN_GENESIS.EVM[BLOCKCHAIN_GENESIS.SHARD][recipient]){
 
                         let unlockAmount = unlocksTable["0"]
     
@@ -528,7 +522,7 @@ let setGenesisToState=async()=>{
         
                         await KLY_EVM.updateAccount(recipient,recipientAccount)
 
-                    } else throw new Error("You need to add the allocations recipient to BLOCKCHAIN_GENESIS.EVM['shard_0']")
+                    } else throw new Error("You need to add the allocations recipient to BLOCKCHAIN_GENESIS.EVM[SHARD]")
     
                 }    
 
@@ -573,10 +567,6 @@ let setGenesisToState=async()=>{
 
 
 
-
-    // Node starts to verify blocks from the first validator in genesis, so sequency matter
-    
-    WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = 'shard_0'
 
     WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
 
