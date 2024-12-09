@@ -146,17 +146,9 @@ export let WORKING_THREADS = {
 
         epochIndex:0,
 
-        perShardData:{
-
-            shard_0:{
-
-                prevHash:`0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`, // "null" hash
+        prevHash:`0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`, // "null" hash
         
-                nextIndex:0 // so the first block will be with index 0
-        
-            }
-        
-        }
+        nextIndex:0 // so the first block will be with index 0
             
     },
 
