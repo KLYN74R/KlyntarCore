@@ -14,7 +14,15 @@ import Block from '../structures/block.js'
 
 export let startBlockGenerationThread=async()=>{
 
-    await generateBlocksPortion()
+    let promises = []
+
+    for(let shardID of WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.shardsRegistry){
+
+        promises.push(generateBlocksPortion(shardID))
+
+    }
+
+    await Promise.all(promises)
 
     setTimeout(startBlockGenerationThread,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.BLOCK_TIME)
  
@@ -24,7 +32,7 @@ export let startBlockGenerationThread=async()=>{
 let getTransactionsFromMempool = () => NODE_METADATA.MEMPOOL.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.TXS_LIMIT_PER_BLOCK)
 
 
-let generateBlocksPortion = async() => {
+let generateBlocksPortion = async shardID => {
 
     let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
     
@@ -42,7 +50,9 @@ let generateBlocksPortion = async() => {
 
     let proofsGrabber = currentEpochMetadata.TEMP_CACHE.get('PROOFS_GRABBER')
 
-    if(proofsGrabber && WORKING_THREADS.GENERATION_THREAD.epochFullId === epochFullID && WORKING_THREADS.GENERATION_THREAD.nextIndex > proofsGrabber.acceptedIndex+1) return
+    let shouldntGenerateNextBlock = WORKING_THREADS.GENERATION_THREAD.perShardData[shardID].nextIndex > proofsGrabber.acceptedIndex+1
+
+    if(proofsGrabber && WORKING_THREADS.GENERATION_THREAD.epochFullId === epochFullID && shouldntGenerateNextBlock) return
 
 
     // Safe "if" branch to prevent unnecessary blocks generation
@@ -54,18 +64,25 @@ let generateBlocksPortion = async() => {
         if(WORKING_THREADS.GENERATION_THREAD.epochFullId !== epochFullID){
 
 
+            WORKING_THREADS.GENERATION_THREAD.perShardData = {}
+
             // Update the index & hash of epoch
+
+            for(let shardID of epochHandler.shardsRegistry){
+
+                // And nullish the index & hash in generation thread for new epoch
+
+                WORKING_THREADS.GENERATION_THREAD.perShardData[shardID].nextIndex = 0
+
+                WORKING_THREADS.GENERATION_THREAD.perShardData[shardID].prevHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+        
+            }
 
             WORKING_THREADS.GENERATION_THREAD.epochFullId = epochFullID
 
             WORKING_THREADS.GENERATION_THREAD.epochIndex = epochIndex
 
 
-            // And nullish the index & hash in generation thread for new epoch
-
-            WORKING_THREADS.GENERATION_THREAD.prevHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
- 
-            WORKING_THREADS.GENERATION_THREAD.nextIndex = 0
     
         }
 
@@ -96,7 +113,7 @@ let generateBlocksPortion = async() => {
 
         for(let i=0;i<numberOfBlocksToGenerate;i++){
 
-            let blockCandidate = new Block(getTransactionsFromMempool(),extraData,WORKING_THREADS.GENERATION_THREAD.epochFullId)
+            let blockCandidate = new Block(shardID,getTransactionsFromMempool(),extraData,WORKING_THREADS.GENERATION_THREAD.epochFullId)
                             
             let hash = Block.genHash(blockCandidate)
     
