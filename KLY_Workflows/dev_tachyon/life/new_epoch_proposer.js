@@ -1,8 +1,8 @@
+import {verifyAggregatedEpochFinalizationProof, verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
+
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
-
-import {verifyAggregatedEpochFinalizationProof, verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
 
 import {useTemporaryDb} from '../common_functions/approvement_thread_related.js'
 
@@ -33,10 +33,10 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
     }
 
 
-    let iAmInTheQuorum = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum.includes(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
+    let iAmBlockGenerator = CONFIGURATION.NODE_LEVEL.BLOCK_GENERATOR_MODE
 
 
-    if(iAmInTheQuorum && !epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)){
+    if(iAmBlockGenerator && !epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)){
         
         // Stop to generate finalization proofs
         currentEpochMetadata.SYNCHRONIZER.set('TIME_TO_NEW_EPOCH',true)
