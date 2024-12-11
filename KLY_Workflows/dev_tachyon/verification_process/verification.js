@@ -875,6 +875,10 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         await atomicBatch.write()
 
+        // Clear the cache for stuff
+
+        GLOBAL_CACHES.STUFF_CACHE.clear()
+
 
         // Now we can delete useless data from EPOCH_DATA db
 
