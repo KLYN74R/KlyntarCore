@@ -182,7 +182,9 @@ let generateBlocksPortion = async() => {
 
     let proofsGrabber = currentEpochMetadata.TEMP_CACHE.get('PROOFS_GRABBER')
 
-    if(proofsGrabber && WORKING_THREADS.GENERATION_THREAD.epochFullId === epochFullID && WORKING_THREADS.GENERATION_THREAD.nextIndex > proofsGrabber.acceptedIndex+1) return
+    let shouldntGenerateNextBlock = WORKING_THREADS.GENERATION_THREAD.nextIndex > proofsGrabber.acceptedIndex+1
+
+    if(proofsGrabber && WORKING_THREADS.GENERATION_THREAD.epochFullId === epochFullID && shouldntGenerateNextBlock) return
 
 
     // Safe "if" branch to prevent unnecessary blocks generation
@@ -195,19 +197,18 @@ let generateBlocksPortion = async() => {
 
         if(WORKING_THREADS.GENERATION_THREAD.epochFullId !== epochFullID){
 
+            // And nullish the index & hash in generation thread for new epoch
 
-            // Update the index & hash of epoch
+            WORKING_THREADS.GENERATION_THREAD.nextIndex = 0
+
+            WORKING_THREADS.GENERATION_THREAD.prevHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+
 
             WORKING_THREADS.GENERATION_THREAD.epochFullId = epochFullID
 
             WORKING_THREADS.GENERATION_THREAD.epochIndex = epochIndex
 
 
-            // And nullish the index & hash in generation thread for new epoch
-
-            WORKING_THREADS.GENERATION_THREAD.prevHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
- 
-            WORKING_THREADS.GENERATION_THREAD.nextIndex = 0
     
         }
 

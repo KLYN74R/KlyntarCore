@@ -4,7 +4,7 @@ import {getCurrentEpochQuorum, getQuorumMajority, getQuorumUrlsAndPubkeys} from 
 
 import {CONTRACT_FOR_DELAYED_TRANSACTIONS} from '../system_contracts/delayed_transactions/delayed_transactions.js'
 
-import {getFirstBlockOnEpochOnSpecificShard, verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
+import {verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
 
 import {blake3Hash, logColors, customLog, pathResolve} from '../../../KLY_Utils/utils.js'
 
@@ -55,7 +55,7 @@ export let executeDelayedTransaction = async(threadID,delayedTransaction) => {
 
 
 
-export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
+export let findAggregatedEpochFinalizationProofs=async()=>{
 
     
     if(!epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)){
@@ -66,7 +66,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
 
         if(currentEpochHandler.id - verificationThreadEpochHandler.id >= 2){
 
-            setTimeout(findAefpsAndFirstBlocksForCurrentEpoch,3000)
+            setTimeout(findAggregatedEpochFinalizationProofs,3000)
     
             return
 
@@ -78,7 +78,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
     
         if(!temporaryObject){
     
-            setTimeout(findAefpsAndFirstBlocksForCurrentEpoch,3000)
+            setTimeout(findAggregatedEpochFinalizationProofs,3000)
     
             return
     
@@ -202,49 +202,6 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                 }
 
             }
-            
-
-
-            /*
-        
-                ███████╗██╗███╗   ██╗██████╗     ███████╗██╗██████╗ ███████╗████████╗    ██████╗ ██╗      ██████╗  ██████╗██╗  ██╗███████╗
-                ██╔════╝██║████╗  ██║██╔══██╗    ██╔════╝██║██╔══██╗██╔════╝╚══██╔══╝    ██╔══██╗██║     ██╔═══██╗██╔════╝██║ ██╔╝██╔════╝
-                █████╗  ██║██╔██╗ ██║██║  ██║    █████╗  ██║██████╔╝███████╗   ██║       ██████╔╝██║     ██║   ██║██║     █████╔╝ ███████╗
-                ██╔══╝  ██║██║╚██╗██║██║  ██║    ██╔══╝  ██║██╔══██╗╚════██║   ██║       ██╔══██╗██║     ██║   ██║██║     ██╔═██╗ ╚════██║
-                ██║     ██║██║ ╚████║██████╔╝    ██║     ██║██║  ██║███████║   ██║       ██████╔╝███████╗╚██████╔╝╚██████╗██║  ██╗███████║
-                ╚═╝     ╚═╝╚═╝  ╚═══╝╚═════╝     ╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝   ╚═╝       ╚═════╝ ╚══════╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝
-    
-            */
-
-            if(!aefpAndFirstBlockData[shardID].firstBlockHash){
-
-                // Structure is {firstBlockCreator,firstBlockHash}
-            
-                let storedFirstBlockData = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`FIRST_BLOCK:${currentEpochHandler.id}:${shardID}`).catch(()=>null)
-
-                if(!storedFirstBlockData){
-
-                    // Try to find via network requests
-
-                    storedFirstBlockData = await getFirstBlockOnEpochOnSpecificShard('APPROVEMENT_THREAD',currentEpochHandler,shardID,getBlock)
-
-                }
-
-                if(storedFirstBlockData){
-
-                    aefpAndFirstBlockData[shardID].firstBlockCreator = storedFirstBlockData.firstBlockCreator
-
-                    aefpAndFirstBlockData[shardID].firstBlockHash = storedFirstBlockData.firstBlockHash
-
-                }
-
-            }
-
-        
-            if(aefpAndFirstBlockData[shardID].firstBlockHash && aefpAndFirstBlockData[shardID].aefp) totalNumberOfReadyShards++
-
-            if(!aefpAndFirstBlockData[shardID].firstBlockHash) aefpAndFirstBlockData[shardID] = {}
-    
         
         }
 
@@ -316,7 +273,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                 
                 for(let delayedTransaction of delayedTransactionsFromAllShards){
 
-                    let itsDaoVoting = delayedTransaction.type === 'changeNumberOfShards' || delayedTransaction.type === 'votingAccept'
+                    let itsDaoVoting = delayedTransaction.type === 'votingAccept'
 
                     let itsSlashing = delayedTransaction.type === 'slashing'
 
@@ -352,7 +309,11 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
             
                 GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.forEach((value,storageCellID)=>{
             
-                    atomicBatch.put(storageCellID,value)
+                    if(storageCellID.includes('(POOL)_STORAGE_POOL')){
+
+                        atomicBatch.put(storageCellID,value)
+
+                    }
             
                 })
 
@@ -403,6 +364,9 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                 atomicBatch.put('AT',WORKING_THREADS.APPROVEMENT_THREAD)
 
                 await atomicBatch.write()
+
+                // Clear the cache
+                GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.clear()
 
 
                 // Create mappings & set for the next epoch
@@ -482,11 +446,12 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
         }
 
         // Continue to find
-        setImmediate(findAefpsAndFirstBlocksForCurrentEpoch)
+        
+        setImmediate(findAggregatedEpochFinalizationProofs)
 
     }else{
 
-        setTimeout(findAefpsAndFirstBlocksForCurrentEpoch,3000)
+        setTimeout(findAggregatedEpochFinalizationProofs,3000)
 
     }
 

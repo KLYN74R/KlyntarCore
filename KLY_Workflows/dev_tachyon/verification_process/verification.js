@@ -20,8 +20,6 @@ import {vtStatsLog} from '../common_functions/logging.js'
 
 import {VERIFIERS} from './txs_verifiers.js'
 
-import {Transaction} from '@ethereumjs/tx'
-
 import Block from '../structures/block.js'
 
 import fetch from 'node-fetch'
@@ -1106,35 +1104,6 @@ let checkConnectionWithPool = async(poolToCheckConnectionWith,vtEpochHandler) =>
 
 
 
-let getTouchedAccountsByEvmTx = serializedEVMTx => {
-
-    let serializedEVMTxWithout0x = serializedEVMTx.slice(2) // delete 0x
-        
-    let txDeserialized = Transaction.fromSerializedTx(Buffer.from(serializedEVMTxWithout0x,'hex'))
-    
-    // Try to parse tx.data - maybe it contains additional data(for parallelization, AAv2, etc.), not only calldata
-    
-    let touchedAccounts = null
-    
-    try {
-    
-        let parsedDataField = JSON.parse(txDeserialized.data.toString())
-
-        touchedAccounts = parsedDataField.touchedAccounts
-            
-    } catch {
-
-        touchedAccounts = null
-
-    }
-
-    return touchedAccounts
-
-}
-
-
-
-
 let getPreparedTxsForParallelization = txsArray => {
 
 
@@ -1151,11 +1120,7 @@ let getPreparedTxsForParallelization = txsArray => {
 
         txCounter++
 
-        let possibleTouchedAccounts = null
-
-        if(transaction.type === 'EVM_CALL') possibleTouchedAccounts = getTouchedAccountsByEvmTx(transaction.payload)
-
-        else possibleTouchedAccounts = transaction?.payload?.touchedAccounts
+        let possibleTouchedAccounts = transaction?.payload?.touchedAccounts
 
         if(Array.isArray(possibleTouchedAccounts)){
 
@@ -1183,11 +1148,7 @@ let getPreparedTxsForParallelization = txsArray => {
 
     for(let transaction of txsArray){
 
-        let possibleTouchedAccounts = null
-
-        if(transaction.type === 'EVM_CALL') possibleTouchedAccounts = getTouchedAccountsByEvmTx(transaction.payload)
-
-        else possibleTouchedAccounts = transaction?.payload?.touchedAccounts
+        let possibleTouchedAccounts = transaction?.payload?.touchedAccounts
 
         if(Array.isArray(possibleTouchedAccounts)){
 
@@ -1217,12 +1178,7 @@ let getPreparedTxsForParallelization = txsArray => {
         let accountThatChangesMoreThanOnce
 
 
-        let possibleTouchedAccounts = null
-
-        if(transaction.type === 'EVM_CALL') possibleTouchedAccounts = getTouchedAccountsByEvmTx(transaction.payload)
-
-        else possibleTouchedAccounts = transaction?.payload?.touchedAccounts
-
+        let possibleTouchedAccounts = transaction?.payload?.touchedAccounts
 
         if(Array.isArray(possibleTouchedAccounts)){
 
@@ -1267,13 +1223,13 @@ let getPreparedTxsForParallelization = txsArray => {
 
 export let startVerificationThread=async()=>{
 
-    let shardsIdentifiers = GLOBAL_CACHES.STATE_CACHE.get('SHARDS_IDS')
+    let shardsIdentifiers = GLOBAL_CACHES.STUFF_CACHE.get('SHARDS_IDS')
 
     if(!shardsIdentifiers){
 
         shardsIdentifiers = Object.keys(WORKING_THREADS.VERIFICATION_THREAD.EPOCH.leadersSequence)
 
-        GLOBAL_CACHES.STATE_CACHE.set('SHARDS_IDS',shardsIdentifiers)
+        GLOBAL_CACHES.STUFF_CACHE.set('SHARDS_IDS',shardsIdentifiers)
 
     }
 
@@ -1281,8 +1237,6 @@ export let startVerificationThread=async()=>{
     let currentEpochIsFresh = epochStillFresh(WORKING_THREADS.VERIFICATION_THREAD)
 
     let vtEpochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
-
-    let previousShardWeChecked = WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER
 
     let indexOfPreviousShard = shardsIdentifiers.indexOf(previousShardWeChecked)
 
@@ -1470,8 +1424,6 @@ export let startVerificationThread=async()=>{
             // Move to next one
             tempInfoAboutFinalBlocksByPreviousPoolsOnShard.currentToVerify++
 
-            WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = currentShardToCheck
-
 
             if(!currentEpochIsFresh){
 
@@ -1547,9 +1499,6 @@ export let startVerificationThread=async()=>{
         }
 
     }
-
-
-    WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = currentShardToCheck
 
 
     if(!currentEpochIsFresh && !WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS?.[currentShardToCheck]){
@@ -1912,9 +1861,6 @@ let verifyBlock = async(block,shardContext) => {
         WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.totalTxsNumber += block.transactions.length        
 
         WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.successfulTxsNumber += rewardsAndSuccessfulTxsCollector.successfulTxsCounter
-
-        
-        WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = shardContext
 
         
         // Change metadata per validator's thread
