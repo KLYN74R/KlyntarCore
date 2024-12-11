@@ -31,7 +31,6 @@ async function runTx(opts) {
     
     this.eei.isSandboxExecution = opts.isSandboxExecution
     this.eei.evmContext = opts.evmContext
-    this.eei.touchedAccounts = opts.touchedAccounts
     this.eei.accountAbstractionV2Data = opts.accountAbstractionV2Data
 
     // create a reasonable default if no block is given
@@ -324,8 +323,6 @@ async function _runTx(opts) {
 
         isSandboxExecution:opts.isSandboxExecution,
         evmContext:opts.evmContext,
-        
-        touchedAccounts:opts.touchedAccounts,
         accountAbstractionV2Data:opts.accountAbstractionV2Data
 
     }));
