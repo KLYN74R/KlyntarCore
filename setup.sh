@@ -86,7 +86,7 @@ fi
 #╚═╝  ╚═╝╚═╝      ╚═════╝ ╚══════╝╚══════╝ ╚═════╝ 
 
 #Install Apollo to the project directory
-git clone https://github.com/KLYN74R/Apollo.git APOLLO
+git clone https://github.com/KlyntarNetwork/Apollo.git APOLLO
 
 cd APOLLO
 
