@@ -13,14 +13,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/KLYN74R/KlyntarCore.git"
+    "url": "git+https://github.com/KlyntarNetwork/KlyntarCore.git"
   },
   "author": "KlyntarTeam",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/KLYN74R/KlyntarCore/issues"
+    "url": "https://github.com/KlyntarNetwork/KlyntarCore/issues"
   },
-  "homepage": "https://github.com/KLYN74R/KlyntarCore#readme",
+  "homepage": "https://github.com/KlyntarNetwork/KlyntarCore#readme",
   "dependencies": {
     "@assemblyscript/loader": "^0.20.19",
     "@fastify/cors": "^9.0.1",
