@@ -42,4 +42,4 @@ The only difference is that workflow has more global meaning than consensus, bec
 
 ## How to write custom workflow
 
-See <a href="https://github.com/KLYN74R/KlyntarCore/tree/main/KLY_Workflows/dev_helloworld">here</a>
+See <a href="https://github.com/KlyntarNetwork/KlyntarCore/tree/main/KLY_Workflows/dev_helloworld">here</a>

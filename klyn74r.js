@@ -358,7 +358,7 @@ customLog(`\u001b[38;5;202mTLS\u001b[38;5;168m is \u001b[38;5;50m${CONFIGURATION
 
 customLog(`Server is working on \u001b[38;5;50m[${CONFIGURATION.NODE_LEVEL.INTERFACE}]:${CONFIGURATION.NODE_LEVEL.PORT}`,logColors.CON)
 
-customLog(CONFIGURATION.NODE_LEVEL.PLUGINS.length!==0 ? `Runned plugins(${CONFIGURATION.NODE_LEVEL.PLUGINS.length}) are \u001b[38;5;50m${CONFIGURATION.NODE_LEVEL.PLUGINS.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`:'No plugins will be runned. Find the best plugins for you here \u001b[38;5;50mhttps://github.com/KLYN74R/Plugins',logColors.CON)
+customLog(CONFIGURATION.NODE_LEVEL.PLUGINS.length!==0 ? `Runned plugins(${CONFIGURATION.NODE_LEVEL.PLUGINS.length}) are \u001b[38;5;50m${CONFIGURATION.NODE_LEVEL.PLUGINS.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`:'No plugins will be runned. Find the best plugins for you here \u001b[38;5;50mhttps://github.com/KlyntarNetwork/Plugins',logColors.CON)
 
 customLog(fs.readFileSync(pathResolve('images/events/start.txt')).toString(),logColors.GREEN)
 
