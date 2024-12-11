@@ -352,7 +352,11 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
             
                 GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.forEach((value,storageCellID)=>{
             
-                    atomicBatch.put(storageCellID,value)
+                    if(storageCellID.includes('(POOL)_STORAGE_POOL')){
+
+                        atomicBatch.put(storageCellID,value)
+
+                    }
             
                 })
 
@@ -403,6 +407,9 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                 atomicBatch.put('AT',WORKING_THREADS.APPROVEMENT_THREAD)
 
                 await atomicBatch.write()
+
+                // Clean the cache
+                GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.clear()
 
 
                 // Create mappings & set for the next epoch
