@@ -4,17 +4,12 @@ import {verifyQuorumMajoritySolution} from "../../common_functions/work_with_pro
 
 import {WORKING_THREADS} from "../../blockchain_preparation.js"
 
-import Web3 from 'web3'
-
-
 
 
 
 export let gasUsedByMethod=methodID=>{
 
     if(methodID==='votingAccept') return 10000
-
-    else if(methodID==='addNewShard') return 10000
 
 }
 
@@ -77,90 +72,6 @@ export let CONTRACT = {
 
         } else return {isOk:false,reason:'Majority proof verification failed'}
 
-    },
-
-
-    /*
-    
-        Method to change number of shards
-    
-        {
-
-            shardID:'shard_id',
-
-            operation:'+' | '-'
-
-            quorumAgreements:{
-
-                quorumMemberPubKey1: Signature(`changeNumberOfShards:${epochFullID}:${shardID}:${operation}`),
-                ...
-                quorumMemberPubKeyN: Signature(`changeNumberOfShards:${epochFullID}:${shardID}:${operation}`)
-
-            }
-        }
-    
-    */
-    changeNumberOfShards:async(threadContext, transaction)=>{
-
-        let {shardID, operation, quorumAgreements} = transaction.payload.params
-
-        let threadById = threadContext === 'APPROVEMENT_THREAD' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
-
-        let epochFullID = threadById.EPOCH.hash+'#'+threadById.EPOCH.hash
-
-        // Verify the majority's proof
-
-        let dataThatShouldBeSignedByQuorum = `changeNumberOfShards:${epochFullID}:${shardID}:${operation}`
-
-        let majorityProofIsOk = verifyQuorumMajoritySolution(dataThatShouldBeSignedByQuorum,quorumAgreements)
-
-
-        if(majorityProofIsOk){
-
-            if(operation === '+' && !threadById.EPOCH.shardsRegistry.includes(shardID)){
-
-                threadById.EPOCH.shardsRegistry.push(shardID)
-
-                // Add the SID tracker
-
-                if(threadContext === 'VT'){
-
-                    WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardID] = 0
-
-                    WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA[shardID] = {
-        
-                        nextBlockIndex: Web3.utils.toHex(BigInt(0).toString()),
-                
-                        parentHash:'0000000000000000000000000000000000000000000000000000000000000000',
-                
-                        timestamp:Math.floor(WORKING_THREADS.VERIFICATION_THREAD.EPOCH.startTimestamp/1000)
-                
-                    }
-
-                }
-
-            } else if(operation === '-' && threadById.EPOCH.shardsRegistry.includes(shardID)){
-
-                let indexInRegistry = threadById.EPOCH.shardsRegistry.indexOf(shardID)
-
-                threadById.EPOCH.shardsRegistry.splice(indexInRegistry, 1)
-
-                // Remove the SID tracker
-
-                if(threadContext === 'VERIFICATION_THREAD'){
-
-                    delete WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardID]
-
-                    delete WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA[shardID]
-                
-                }
-
-            }
-
-            return {isOk:true}
-
-        } else return {isOk:false,reason:'Majority proof verification failed'}
-
     }
-    
+
 }
