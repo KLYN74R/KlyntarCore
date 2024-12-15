@@ -11,8 +11,6 @@ export let gasUsedByMethod=methodID=>{
 
     if(methodID==='votingAccept') return 10000
 
-    else if(methodID==='addNewShard') return 10000
-
 }
 
 
