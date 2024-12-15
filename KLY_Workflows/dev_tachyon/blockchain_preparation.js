@@ -85,8 +85,6 @@ export let GLOBAL_CACHES = {
 export let WORKING_THREADS = {
 
     VERIFICATION_THREAD: {
-            
-        SHARD_POINTER:'',
 
         VERIFICATION_STATS_PER_POOL:{}, // PUBKEY => {index:int,hash:''}
 
@@ -614,11 +612,6 @@ let setGenesisToState=async()=>{
     await approvementThreadAtomicBatch.write()
 
 
-
-
-    // Node starts to verify blocks from the first validator in genesis, so sequency matter
-    
-    WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = 'shard_0'
 
     WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
 

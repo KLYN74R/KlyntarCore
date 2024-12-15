@@ -1430,30 +1430,19 @@ let getPreparedTxsForParallelization = txsArray => {
 
 export let startVerificationThread=async()=>{
 
-    let shardsIdentifiers = GLOBAL_CACHES.STUFF_CACHE.get('SHARDS_IDS')
 
-    if(!shardsIdentifiers){
-
-        shardsIdentifiers = Object.keys(WORKING_THREADS.VERIFICATION_THREAD.EPOCH.leadersSequence)
-
-        GLOBAL_CACHES.STUFF_CACHE.set('SHARDS_IDS',shardsIdentifiers)
-
-    }
-
-    
     let currentEpochIsFresh = epochStillFresh(WORKING_THREADS.VERIFICATION_THREAD)
 
     let vtEpochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
 
-    let previousShardWeChecked = WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER
-
-    let indexOfPreviousShard = shardsIdentifiers.indexOf(previousShardWeChecked)
-
-    let currentShardToCheck = shardsIdentifiers[indexOfPreviousShard+1] || shardsIdentifiers[0] // Take the next shard to verify. If it's end of array - start from the first shard
-
     let vtEpochFullID = vtEpochHandler.hash+"#"+vtEpochHandler.id
 
     let vtEpochIndex = vtEpochHandler.id
+
+
+    let shardsIdentifiers = vtEpochHandler.shardsRegistry
+
+    let currentShardToCheck = shardsIdentifiers[0]
 
     
 
@@ -1631,9 +1620,8 @@ export let startVerificationThread=async()=>{
         if(infoAboutLastBlockByThisPool && verificationStatsOfThisPool.index === infoAboutLastBlockByThisPool.index){
 
             // Move to next one
+            
             tempInfoAboutFinalBlocksByPreviousPoolsOnShard.currentToVerify++
-
-            WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = currentShardToCheck
 
 
             if(!currentEpochIsFresh){
@@ -1710,9 +1698,6 @@ export let startVerificationThread=async()=>{
         }
 
     }
-
-
-    WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = currentShardToCheck
 
 
     if(!currentEpochIsFresh && !WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS?.[currentShardToCheck]){
@@ -2075,9 +2060,6 @@ let verifyBlock = async(block,shardContext) => {
         WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.totalTxsNumber += block.transactions.length        
 
         WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.successfulTxsNumber += rewardsAndSuccessfulTxsCollector.successfulTxsCounter
-
-        
-        WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = shardContext
 
         
         // Change metadata per validator's thread
