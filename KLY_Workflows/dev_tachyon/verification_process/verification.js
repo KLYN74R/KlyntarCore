@@ -1261,28 +1261,19 @@ let getPreparedTxsForParallelization = txsArray => {
 
 export let startVerificationThread=async()=>{
 
-    let shardsIdentifiers = GLOBAL_CACHES.STUFF_CACHE.get('SHARDS_IDS')
-
-    if(!shardsIdentifiers){
-
-        shardsIdentifiers = Object.keys(WORKING_THREADS.VERIFICATION_THREAD.EPOCH.leadersSequence)
-
-        GLOBAL_CACHES.STUFF_CACHE.set('SHARDS_IDS',shardsIdentifiers)
-
-    }
-
     
     let currentEpochIsFresh = epochStillFresh(WORKING_THREADS.VERIFICATION_THREAD)
 
     let vtEpochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
 
-    let indexOfPreviousShard = shardsIdentifiers.indexOf(previousShardWeChecked)
-
-    let currentShardToCheck = shardsIdentifiers[indexOfPreviousShard+1] || shardsIdentifiers[0] // Take the next shard to verify. If it's end of array - start from the first shard
-
     let vtEpochFullID = vtEpochHandler.hash+"#"+vtEpochHandler.id
 
     let vtEpochIndex = vtEpochHandler.id
+    
+
+    let shardsIdentifiers = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.shardsRegistry
+
+    let currentShardToCheck = shardsIdentifiers[0] // Take the next shard to verify. If it's end of array - start from the first shard
 
     
 
