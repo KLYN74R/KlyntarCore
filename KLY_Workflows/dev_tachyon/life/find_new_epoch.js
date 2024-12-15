@@ -316,7 +316,7 @@ export let findAefpsAndFirstBlocksForCurrentEpoch=async()=>{
                 
                 for(let delayedTransaction of delayedTransactionsFromAllShards){
 
-                    let itsDaoVoting = delayedTransaction.type === 'changeNumberOfShards' || delayedTransaction.type === 'votingAccept'
+                    let itsDaoVoting = delayedTransaction.type === 'votingAccept'
 
                     let itsSlashing = delayedTransaction.type === 'slashing'
 
