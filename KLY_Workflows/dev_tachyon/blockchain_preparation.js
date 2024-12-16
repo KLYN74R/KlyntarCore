@@ -384,9 +384,9 @@ let setGenesisToState=async()=>{
 
         verificationThreadAtomicBatch.put(poolPubKey+'(POOL)_POINTER',bindToShard)
 
-        verificationThreadAtomicBatch.put(poolContractStorage.shard+':'+poolPubKey+'(POOL)',contractMetadataTemplate)
+        verificationThreadAtomicBatch.put(bindToShard+':'+poolPubKey+'(POOL)',contractMetadataTemplate)
     
-        verificationThreadAtomicBatch.put(poolContractStorage.shard+':'+poolPubKey+'(POOL)_STORAGE_POOL',poolContractStorage)
+        verificationThreadAtomicBatch.put(bindToShard+':'+poolPubKey+'(POOL)_STORAGE_POOL',poolContractStorage)
 
         // Do the same for approvement thread
 
