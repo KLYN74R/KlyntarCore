@@ -198,6 +198,7 @@ global.VERIFICATION_THREAD = WORKING_THREADS.VERIFICATION_THREAD
 
 global.BLOCKCHAIN_GENESIS = BLOCKCHAIN_GENESIS
 
+global.CREATED_EVM_ACCOUNTS = new Set()
 
 
 export let getCurrentShardLeaderURL = async () => {
@@ -409,13 +410,14 @@ let setGenesisToState=async()=>{
             }
 
 
-            let lowerCaseAccountAddressWithoutPrefix = Buffer.from(evmKey.slice(2),'hex').toString('hex')
+            let lowerCaseAddressWith0xPrefix = evmKey.toLowerCase()
 
             // Add assignment to shard
 
-            verificationThreadAtomicBatch.put('EVM_ACCOUNT:'+lowerCaseAccountAddressWithoutPrefix,{shard:BLOCKCHAIN_GENESIS.SHARD,gas})
+            verificationThreadAtomicBatch.put('EVM_ACCOUNT:'+lowerCaseAddressWith0xPrefix,{shard:BLOCKCHAIN_GENESIS.SHARD,gas})
 
             if(isContract) verificationThreadAtomicBatch.put('EVM_CONTRACT_DATA:'+evmKey,{storageAbstractionLastPayment:0})
+
 
         }
 
@@ -508,7 +510,7 @@ let setGenesisToState=async()=>{
 
                 if(recipient.startsWith('0x') && recipient.length === 42){
 
-                    if(BLOCKCHAIN_GENESIS.EVM[BLOCKCHAIN_GENESIS.SHARD][recipient]){
+                    if(BLOCKCHAIN_GENESIS.EVM[recipient]){
 
                         let unlockAmount = unlocksTable["0"]
     
@@ -522,7 +524,7 @@ let setGenesisToState=async()=>{
         
                         await KLY_EVM.updateAccount(recipient,recipientAccount)
 
-                    } else throw new Error("You need to add the allocations recipient to BLOCKCHAIN_GENESIS.EVM[SHARD]")
+                    } else throw new Error("You need to add the allocations recipient to BLOCKCHAIN_GENESIS.EVM")
     
                 }    
 

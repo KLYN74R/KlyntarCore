@@ -199,9 +199,9 @@ FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
 
             let account = await KLY_EVM.getAccount(accountID).catch(()=>null)
 
-            let accountEvmDataFromNativeKlyEnv = await BLOCKCHAIN_DATABASES.STATE.get(`EVM_ACCOUNT:${accountID.slice(2).toLowerCase()}`).catch(()=>null)
+            let accountEvmDataFromNativeKlyEnv = await BLOCKCHAIN_DATABASES.STATE.get(`EVM_ACCOUNT:${accountID.toLowerCase()}`).catch(()=>null)
 
-            let contractData = await BLOCKCHAIN_DATABASES.STATE.get(`EVM_CONTRACT_DATA:${accountID}`).catch(()=>null)
+            let contractData = await BLOCKCHAIN_DATABASES.STATE.get(`EVM_CONTRACT_DATA:${accountID.toLowerCase()}`).catch(()=>null)
 
             if(account){
 
