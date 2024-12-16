@@ -12,8 +12,7 @@
         "clientVersion":"KLY-EVM/dev_tachyon/v0.13.37/Node.js",
         "protocolVersionInHex":"0x1",
         "gasPriceInWeiAndHex":"0x49ad39126",
-        "maxAllowedGasAmountForSandboxExecution":100000,
-        "bindContext":"shard_0"
+        "maxAllowedGasAmountForSandboxExecution":100000
     
     }
 }
