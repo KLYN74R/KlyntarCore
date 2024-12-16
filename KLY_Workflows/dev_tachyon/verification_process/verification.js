@@ -1347,7 +1347,7 @@ let getPreparedTxsForParallelization = txsArray => {
 
         txCounter++
 
-        let possibleTouchedAccounts = possibleTouchedAccounts = transaction?.payload?.touchedAccounts
+        let possibleTouchedAccounts = transaction?.payload?.touchedAccounts
 
 
         if(Array.isArray(possibleTouchedAccounts)){
