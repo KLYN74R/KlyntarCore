@@ -319,9 +319,7 @@ let setGenesisToState=async()=>{
 
         poolsRegistryForEpochHandler = [],
 
-        shardsRegistry = [],
-
-        numberOfShards = 0
+        shardsRegistry = []
 
 
 
@@ -331,6 +329,11 @@ let setGenesisToState=async()=>{
         CONFIGURATION.NODE_LEVEL.BLOCK_GENERATOR_PUBKEY
     
     ] = {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
+
+    
+    WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[BLOCKCHAIN_GENESIS.SHARD] = 0
+
+    shardsRegistry.push(BLOCKCHAIN_GENESIS.SHARD)
 
 
     //__________________________________ Load info about pools __________________________________
@@ -353,30 +356,14 @@ let setGenesisToState=async()=>{
 
         }
         
-        // If new shard occured - add appropriate indexer
-
-        let isNewShard = false
-
-        if(WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[bindToShard] !== 0) {
-
-            WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[bindToShard] = 0
-
-            isNewShard = true
-
-            shardsRegistry.push(`shard_${numberOfShards}`)
-
-            numberOfShards++
-
-        }
-
         
         // Store all info about pool(pointer+metadata+storage) to state
 
         verificationThreadAtomicBatch.put(poolPubKey+'(POOL)_POINTER',bindToShard)
 
-        verificationThreadAtomicBatch.put(poolContractStorage.shard+':'+poolPubKey+'(POOL)',contractMetadataTemplate)
+        verificationThreadAtomicBatch.put(bindToShard+':'+poolPubKey+'(POOL)',contractMetadataTemplate)
     
-        verificationThreadAtomicBatch.put(poolContractStorage.shard+':'+poolPubKey+'(POOL)_STORAGE_POOL',poolContractStorage)
+        verificationThreadAtomicBatch.put(bindToShard+':'+poolPubKey+'(POOL)_STORAGE_POOL',poolContractStorage)
 
         // Do the same for approvement thread
 
@@ -386,66 +373,60 @@ let setGenesisToState=async()=>{
 
         poolsRegistryForEpochHandler.push(poolPubKey)
 
+    }
 
-        //________________________ Fill the state of KLY-EVM ________________________
-
-        if(isNewShard){
-
-            let evmStateForThisShard = BLOCKCHAIN_GENESIS.EVM[bindToShard]
-
-            if(evmStateForThisShard){
-
-                let evmKeys = Object.keys(evmStateForThisShard)
     
-                for(let evmKey of evmKeys) {
+    //________________________ Fill the state of KLY-EVM ________________________
+
+    if(BLOCKCHAIN_GENESIS.EVM){
+
+        let evmKeys = Object.keys(BLOCKCHAIN_GENESIS.EVM)
+
+        for(let evmKey of evmKeys) {
     
-                    let {isContract,balance,nonce,code,storage,gas} = evmStateForThisShard[evmKey]
-    
-                    //Put KLY-EVM to KLY-EVM state db which will be used by Trie
-    
-                    if(isContract){
-    
-                        await KLY_EVM.putContract(evmKey,balance,nonce,code,storage)
+            let {isContract,balance,nonce,code,storage,gas} = BLOCKCHAIN_GENESIS.EVM[evmKey]
 
-                        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalSmartContractsNumber.evm++
+            //Put KLY-EVM to KLY-EVM state db which will be used by Trie
 
-                        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newSmartContractsNumber.evm++
-    
-                    }else{
-                    
-                        await KLY_EVM.putAccount(evmKey,balance,nonce)
+            if(isContract){
 
-                        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.evm++
+                await KLY_EVM.putContract(evmKey,balance,nonce,code,storage)
 
-                        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newUserAccountsNumber.evm++
+                WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalSmartContractsNumber.evm++
 
-                    }
+                WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newSmartContractsNumber.evm++
 
+            } else {
+                
+                await KLY_EVM.putAccount(evmKey,balance,nonce)
 
-                    let lowerCaseAccountAddressWithoutPrefix = Buffer.from(evmKey.slice(2),'hex').toString('hex')
+                WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.evm++
 
-                    // Add assignment to shard
-
-                    verificationThreadAtomicBatch.put('EVM_ACCOUNT:'+lowerCaseAccountAddressWithoutPrefix,{shard:bindToShard,gas})
-
-                    if(isContract) verificationThreadAtomicBatch.put('EVM_CONTRACT_DATA:'+evmKey,{storageAbstractionLastPayment:0})
-    
-                }
+                WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newUserAccountsNumber.evm++
 
             }
 
-            WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA[bindToShard] = {
-        
-                nextBlockIndex:Web3.utils.toHex(BigInt(0).toString()),
-        
-                parentHash:'0000000000000000000000000000000000000000000000000000000000000000',
-        
-                timestamp:Math.floor(epochTimestamp/1000)
-        
-            }
+
+            let lowerCaseAccountAddressWithoutPrefix = Buffer.from(evmKey.slice(2),'hex').toString('hex')
+
+            // Add assignment to shard
+
+            verificationThreadAtomicBatch.put('EVM_ACCOUNT:'+lowerCaseAccountAddressWithoutPrefix,{shard:BLOCKCHAIN_GENESIS.SHARD,gas})
+
+            if(isContract) verificationThreadAtomicBatch.put('EVM_CONTRACT_DATA:'+evmKey,{storageAbstractionLastPayment:0})
 
         }
 
+    }
+
+    WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA[BLOCKCHAIN_GENESIS.SHARD] = {
+        
+        nextBlockIndex:Web3.utils.toHex(BigInt(0).toString()),
+    
+        parentHash:'0000000000000000000000000000000000000000000000000000000000000000',
+    
+        timestamp:Math.floor(epochTimestamp/1000)
+    
     }
 
 
