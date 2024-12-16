@@ -53,9 +53,9 @@ const web3 = new Web3()
 
 global.GET_EVM_ACCOUNT_DATA = async addressAsString => {
 
-    let bindedToShard = await getFromState('EVM_ACCOUNT:'+addressAsString)
+    let accountAdditionalData = await getFromState('EVM_ACCOUNT:'+addressAsString)
 
-    if(bindedToShard) return bindedToShard.shard
+    return accountAdditionalData
 
 }
 
