@@ -175,6 +175,77 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
     delayedTransaction is:
 
     {
+        type:'deactivateStakingPool',
+
+        poolPubKey:<Format is Ed25519_pubkey>,
+        
+        operation:<activate|deactivate>
+    }
+    
+    */
+    changePoolActivationStatus:async(threadContext,delayedTransaction) => {
+
+        let {poolPubKey, operation} = delayedTransaction
+
+        let poolStorage
+
+        let shardWherePoolStorageLocated
+
+        if(threadContext === 'APPROVEMENT_THREAD'){
+
+            poolStorage = await getFromApprovementThreadState(poolPubKey+'(POOL)_STORAGE_POOL')
+
+        } else {
+        
+            shardWherePoolStorageLocated = await getFromState(poolPubKey+'(POOL)_POINTER').catch(()=>null)
+
+            poolStorage = await getFromState(shardWherePoolStorageLocated+':'+poolPubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
+
+        }
+
+        let threadById = threadContext === 'APPROVEMENT_THREAD' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
+
+        if(poolStorage){
+
+            if(operation === 'activate'){
+
+                // Check if pool has enough power to be added to pools registry
+
+                if(poolStorage.totalStakedKly >= threadById.NETWORK_PARAMETERS.VALIDATOR_STAKE && !threadById.EPOCH.poolsRegistry.includes(poolPubKey)){
+
+                    threadById.EPOCH.poolsRegistry.push(poolPubKey)
+
+                }
+
+            } else {
+
+                // Just remove the pool from registry
+
+                if(threadById.EPOCH.poolsRegistry.includes(poolPubKey)){
+
+                    let indexOfPool = threadById.EPOCH.poolsRegistry.indexOf(poolPubKey)
+
+                    threadById.EPOCH.poolsRegistry.splice(indexOfPool, 1)
+
+                }
+
+            }
+
+
+            return {isOk:true}
+
+        } else return {isOk:false,reason:'No such pool'}
+
+
+    },
+
+    
+
+    /*
+    
+    delayedTransaction is:
+
+    {
         type:'stake',
 
         staker: transaction.creator,
@@ -385,58 +456,6 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
         } else return {isOk:false,reason:'No such pool'}
 
     },
-
-
-    /*
-    
-    delayedTransaction is:
-
-    {
-        type:'activate',
-
-        poolPubKey: transaction.creator,
-    }
-    
-    */
-    activate:async(threadContext,delayedTransaction) => {
-
-        let {poolPubKey} = delayedTransaction
-
-        let poolStorage
-
-        let shardWherePoolStorageLocated
-
-        if(threadContext === 'APPROVEMENT_THREAD'){
-
-            poolStorage = await getFromApprovementThreadState(poolPubKey+'(POOL)_STORAGE_POOL')
-
-        } else {
-        
-            shardWherePoolStorageLocated = await getFromState(poolPubKey+'(POOL)_POINTER').catch(()=>null)
-
-            poolStorage = await getFromState(shardWherePoolStorageLocated+':'+poolPubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
-
-        }
-
-        let threadById = threadContext === 'APPROVEMENT_THREAD' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
-
-        if(poolStorage){
-
-            // Check if pool has enough power to be added to pools registry
-
-            if(poolStorage.totalStakedKly >= threadById.NETWORK_PARAMETERS.VALIDATOR_STAKE && !threadById.EPOCH.poolsRegistry.includes(poolPubKey)){
-
-                threadById.EPOCH.poolsRegistry.push(poolPubKey)
-
-            }
-
-            return {isOk:true}
-
-        } else return {isOk:false,reason:'No such pool'}
-
-
-    },
-
 
 
     /*
