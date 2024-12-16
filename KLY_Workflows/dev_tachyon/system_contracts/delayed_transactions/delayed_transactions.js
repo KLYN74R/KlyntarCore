@@ -292,14 +292,7 @@ export let CONTRACT_FOR_DELAYED_TRANSACTIONS = {
 
                 poolStorage.totalStakedKly += amount
 
-                // Check if pool has enough power to be added to pools registry
-
-                if(poolStorage.totalStakedKly >= threadById.NETWORK_PARAMETERS.VALIDATOR_STAKE && !threadById.EPOCH.poolsRegistry.includes(poolPubKey)){
-
-                    threadById.EPOCH.poolsRegistry.push(poolPubKey)
-
-                }
-
+                
                 toReturn = {isOk:true}
 
             } else toReturn = {isOk:false,reason:'Overview failed'}
