@@ -812,12 +812,6 @@ export let VERIFIERS = {
                 if(receipt.contractAddress){
 
                     touchedAccounts.push(receipt.contractAddress)
-
-                    atomicBatch.put('EVM_CONTRACT_DATA:'+receipt.contractAddress,{storageAbstractionLastPayment:WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id})
-
-                    WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalSmartContractsNumber.evm++
-
-                    WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newSmartContractsNumber.evm++
                     
                 }
 

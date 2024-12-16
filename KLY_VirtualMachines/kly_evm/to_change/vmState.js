@@ -146,20 +146,12 @@ class VmState {
 
         let lowerCaseAddressAsStringWithout0x = address.buf.toString('hex');
 
+        if(!this.isSandboxExecution){
 
-        // In case it's sandbox call to filter txs - we use choosen context. It might be own context or some other one
-
-        let shardID = global.BLOCKCHAIN_GENESIS.SHARD
-        
-        let evmAccountData = await global.GET_EVM_ACCOUNT_DATA(lowerCaseAddressAsStringWithout0x);
-
-        // In case it's new contract and we don't have binding for it - bind to current context
-
-        if(!evmAccountData){
-
-            global.STATE_CACHE.put('EVM_ACCOUNT:'+lowerCaseAddressAsStringWithout0x,{shard:shardID,gas:0})
+            global.CREATED_EVM_ACCOUNTS.add('0x'+lowerCaseAddressAsStringWithout0x)
 
         }
+
 
         this.touchedJournal.addJournalItem(address.buf.toString('hex'));
 

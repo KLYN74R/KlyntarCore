@@ -2,11 +2,11 @@ import {getFromApprovementThreadState} from './common_functions/approvement_thre
 
 import {getCurrentEpochQuorum, getQuorumMajority} from './common_functions/quorum_related.js'
 
+import {customLog, pathResolve, logColors, blake3Hash} from '../../KLY_Utils/utils.js'
+
 import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../klyn74r.js'
 
 import {setLeadersSequenceForShards} from './life/shards_leaders_monitoring.js'
-
-import {customLog, pathResolve, logColors, blake3Hash} from '../../KLY_Utils/utils.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
@@ -199,6 +199,8 @@ global.STATE = BLOCKCHAIN_DATABASES.STATE
 global.VERIFICATION_THREAD = WORKING_THREADS.VERIFICATION_THREAD
 
 global.BLOCKCHAIN_GENESIS = BLOCKCHAIN_GENESIS
+
+global.CREATED_EVM_ACCOUNTS = new Set()
 
 
 
@@ -432,11 +434,11 @@ let setGenesisToState=async()=>{
             }
 
 
-            let lowerCaseAccountAddressWithoutPrefix = Buffer.from(evmKey.slice(2),'hex').toString('hex')
+            let lowerCaseAddressWith0xPrefix = evmKey.toLowerCase()
 
             // Add assignment to shard
 
-            verificationThreadAtomicBatch.put('EVM_ACCOUNT:'+lowerCaseAccountAddressWithoutPrefix,{shard:BLOCKCHAIN_GENESIS.SHARD,gas})
+            verificationThreadAtomicBatch.put('EVM_ACCOUNT:'+lowerCaseAddressWith0xPrefix,{shard:BLOCKCHAIN_GENESIS.SHARD,gas})
 
             if(isContract) verificationThreadAtomicBatch.put('EVM_CONTRACT_DATA:'+evmKey,{storageAbstractionLastPayment:0})
 
@@ -532,7 +534,7 @@ let setGenesisToState=async()=>{
 
                 if(recipient.startsWith('0x') && recipient.length === 42){
 
-                    if(BLOCKCHAIN_GENESIS.EVM["shard_0"][recipient]){
+                    if(BLOCKCHAIN_GENESIS.EVM[recipient]){
 
                         let unlockAmount = unlocksTable["0"]
     
@@ -546,7 +548,7 @@ let setGenesisToState=async()=>{
         
                         await KLY_EVM.updateAccount(recipient,recipientAccount)
 
-                    } else throw new Error("You need to add the allocations recipient to BLOCKCHAIN_GENESIS.EVM['shard_0']")
+                    } else throw new Error("You need to add the allocations recipient to BLOCKCHAIN_GENESIS.EVM")
     
                 }    
 
