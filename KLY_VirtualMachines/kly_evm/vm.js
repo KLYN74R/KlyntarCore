@@ -123,15 +123,13 @@ class KLY_EVM_CLASS {
 
         // Try to parse tx.data - maybe it contains additional data(for parallelization, AAv2, etc.), not only calldata
 
-        let touchedAccounts = null, accountAbstractionV2Data = null, pureEvmCalldata = null
+        let accountAbstractionV2Data = null, pureEvmCalldata = null
 
         try {
 
             let parsedDataField = JSON.parse(tx.data.toString())
 
             if(parsedDataField){
-
-                touchedAccounts = parsedDataField.touchedAccounts
     
                 accountAbstractionV2Data = parsedDataField.accountAbstractionV2Data
     
@@ -153,7 +151,7 @@ class KLY_EVM_CLASS {
         tx.data = pureEvmCalldata
 
         
-        let txResult = await this.vm.runTx({tx,block,evmCaller,evmContext,touchedAccounts,accountAbstractionV2Data})
+        let txResult = await this.vm.runTx({tx,block,evmCaller,evmContext,accountAbstractionV2Data})
 
 
         // We'll need full result to store logs and so on
@@ -180,15 +178,13 @@ class KLY_EVM_CLASS {
 
         // Try to parse tx.data - maybe it contains additional data(for parallelization, AAv2, etc.), not only calldata
 
-        let touchedAccounts = null, accountAbstractionV2Data = null, pureEvmCalldata = null
+        let accountAbstractionV2Data = null, pureEvmCalldata = null
 
         try {
 
             let parsedDataField = JSON.parse(tx.data.toString())
 
             if(parsedDataField){
-
-                touchedAccounts = parsedDataField.touchedAccounts
     
                 accountAbstractionV2Data = parsedDataField.accountAbstractionV2Data
 
@@ -228,7 +224,7 @@ class KLY_EVM_CLASS {
 
                 skipBalance:true, isSandboxExecution:true,
 
-                touchedAccounts, accountAbstractionV2Data
+                accountAbstractionV2Data
 
             })
 
@@ -268,7 +264,7 @@ class KLY_EVM_CLASS {
 
                         isSandboxExecution:true,
 
-                        touchedAccounts, accountAbstractionV2Data
+                        accountAbstractionV2Data
 
                     })
 

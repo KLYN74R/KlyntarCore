@@ -252,7 +252,7 @@ let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
 
 
 
-let runFinaliationProofsGrabbing = async (epochHandler,proofsGrabber) => {
+let runFinalizationProofsGrabbing = async (epochHandler,proofsGrabber) => {
 
     let epochFullID = epochHandler.hash + "#" + epochHandler.id
 
@@ -343,7 +343,7 @@ let runFinaliationProofsGrabbing = async (epochHandler,proofsGrabber) => {
     
             for(let pubKeyOfQuorumMember of epochHandler.quorum){
     
-                // No sense to get finaliation proof again if we already have
+                // No sense to get finalization proof again if we already have
     
                 if(finalizationProofsMapping.has(pubKeyOfQuorumMember)) continue
     
@@ -567,7 +567,7 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
 
     await openConnectionsWithQuorum(atEpochHandler,currentEpochMetadata)
 
-    await runFinaliationProofsGrabbing(atEpochHandler,proofsGrabber).catch(()=>{})
+    await runFinalizationProofsGrabbing(atEpochHandler,proofsGrabber).catch(()=>{})
 
 
     setImmediate(shareBlocksAndGetFinalizationProofs)
