@@ -346,19 +346,21 @@ let setGenesisToState=async()=>{
 
         poolsRegistryForEpochHandler = [],
 
-        shardsRegistry = [],
-
-        numberOfShards = 0
+        shardsRegistry = []
 
 
 
+
+    WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[BLOCKCHAIN_GENESIS.SHARD] = 0
+
+    shardsRegistry.push(BLOCKCHAIN_GENESIS.SHARD)
 
     //__________________________________ Load info about pools __________________________________
 
 
     for(let [poolPubKey,poolContractStorage] of Object.entries(BLOCKCHAIN_GENESIS.POOLS)){
 
-        let bindToShard = poolContractStorage.shard
+        let bindToShard = BLOCKCHAIN_GENESIS.SHARD
 
         // Create the value in VT
 
@@ -378,23 +380,6 @@ let setGenesisToState=async()=>{
 
         }
         
-        // If new shard occured - add appropriate indexer
-
-        let isNewShard = false
-
-        if(WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[bindToShard] !== 0) {
-
-            WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[bindToShard] = 0
-
-            isNewShard = true
-
-            shardsRegistry.push(`shard_${numberOfShards}`)
-
-            numberOfShards++
-
-        }
-
-        
         // Store all info about pool(pointer+metadata+storage) to state
 
         verificationThreadAtomicBatch.put(poolPubKey+'(POOL)_POINTER',bindToShard)
@@ -411,125 +396,116 @@ let setGenesisToState=async()=>{
 
         poolsRegistryForEpochHandler.push(poolPubKey)
 
+    }
 
-        //________________________ Fill the state of KLY-EVM ________________________
-
-        if(isNewShard){
-
-            let evmStateForThisShard = BLOCKCHAIN_GENESIS.EVM[bindToShard]
-
-            if(evmStateForThisShard){
-
-                let evmKeys = Object.keys(evmStateForThisShard)
     
-                for(let evmKey of evmKeys) {
-    
-                    let {isContract,balance,nonce,code,storage,gas} = evmStateForThisShard[evmKey]
-    
-                    //Put KLY-EVM to KLY-EVM state db which will be used by Trie
-    
-                    if(isContract){
-    
-                        await KLY_EVM.putContract(evmKey,balance,nonce,code,storage)
+    //________________________ Fill the state of KLY-EVM ________________________
 
-                        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalSmartContractsNumber.evm++
+    if(BLOCKCHAIN_GENESIS.EVM){
 
-                        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newSmartContractsNumber.evm++
-    
-                    }else{
-                    
-                        await KLY_EVM.putAccount(evmKey,balance,nonce)
+        let evmKeys = Object.keys(BLOCKCHAIN_GENESIS.EVM)
 
-                        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.evm++
+        for(let evmKey of evmKeys) {
 
-                        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newUserAccountsNumber.evm++
+            let {isContract,balance,nonce,code,storage,gas} = BLOCKCHAIN_GENESIS.EVM[evmKey]
 
-                    }
+            //Put KLY-EVM to KLY-EVM state db which will be used by Trie
 
+            if(isContract){
 
-                    let lowerCaseAccountAddressWithoutPrefix = Buffer.from(evmKey.slice(2),'hex').toString('hex')
+                await KLY_EVM.putContract(evmKey,balance,nonce,code,storage)
 
-                    // Add assignment to shard
+                WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalSmartContractsNumber.evm++
 
-                    verificationThreadAtomicBatch.put('EVM_ACCOUNT:'+lowerCaseAccountAddressWithoutPrefix,{shard:bindToShard,gas})
+                WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newSmartContractsNumber.evm++
 
-                    if(isContract) verificationThreadAtomicBatch.put('EVM_CONTRACT_DATA:'+evmKey,{storageAbstractionLastPayment:0})
-    
-                }
+            }else{
+            
+                await KLY_EVM.putAccount(evmKey,balance,nonce)
+
+                WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.evm++
+
+                WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newUserAccountsNumber.evm++
 
             }
 
-            WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA[bindToShard] = {
-        
-                nextBlockIndex:Web3.utils.toHex(BigInt(0).toString()),
-        
-                parentHash:'0000000000000000000000000000000000000000000000000000000000000000',
-        
-                timestamp:Math.floor(epochTimestamp/1000)
-        
-            }
+
+            let lowerCaseAccountAddressWithoutPrefix = Buffer.from(evmKey.slice(2),'hex').toString('hex')
+
+            // Add assignment to shard
+
+            verificationThreadAtomicBatch.put('EVM_ACCOUNT:'+lowerCaseAccountAddressWithoutPrefix,{shard:BLOCKCHAIN_GENESIS.SHARD,gas})
+
+            if(isContract) verificationThreadAtomicBatch.put('EVM_CONTRACT_DATA:'+evmKey,{storageAbstractionLastPayment:0})
 
         }
+
+    }
+
+    WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA[BLOCKCHAIN_GENESIS.SHARD] = {
+
+        nextBlockIndex:Web3.utils.toHex(BigInt(0).toString()),
+
+        parentHash:'0000000000000000000000000000000000000000000000000000000000000000',
+
+        timestamp:Math.floor(epochTimestamp/1000)
 
     }
 
 
     //_______________________ Now add the data to state _______________________
 
-    for(let [shardID, collectionOfAccountsToBindToShard] of Object.entries(BLOCKCHAIN_GENESIS.STATE)){
+    for(let [accountID, accountData] of Object.entries(BLOCKCHAIN_GENESIS.STATE)){
 
-        // Now iterate over objects
+        let shardID = BLOCKCHAIN_GENESIS.SHARD
 
-        for(let [accountID, accountData] of Object.entries(collectionOfAccountsToBindToShard)){
+        if(accountData.type === 'contract'){
 
-            if(accountData.type === 'contract'){
+            let {lang,balance,gas,storages,bytecode,storageAbstractionLastPayment} = accountData
 
-                let {lang,balance,gas,storages,bytecode,storageAbstractionLastPayment} = accountData
+            let contractMeta = {
 
-                let contractMeta = {
+                type:'contract',
+                lang,
+                balance,
+                gas,
+                storages,
+                storageAbstractionLastPayment
+            
+            } 
 
-                    type:'contract',
-                    lang,
-                    balance,
-                    gas,
-                    storages,
-                    storageAbstractionLastPayment
-                
-                } 
+            // Write metadata first
+            
+            verificationThreadAtomicBatch.put(shardID+':'+accountID,contractMeta)
 
-                // Write metadata first
-                
-                verificationThreadAtomicBatch.put(shardID+':'+accountID,contractMeta)
+            verificationThreadAtomicBatch.put(shardID+':'+accountID+'_BYTECODE',bytecode)
 
-                verificationThreadAtomicBatch.put(shardID+':'+accountID+'_BYTECODE',bytecode)
+            WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalSmartContractsNumber.native++
 
-                WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalSmartContractsNumber.native++
+            WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newSmartContractsNumber.native++
 
-                WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newSmartContractsNumber.native++
+            // Finally - write genesis storage of contract
 
-                // Finally - write genesis storage of contract
+            for(let storageID of storages){
 
-                for(let storageID of storages){
-
-                    verificationThreadAtomicBatch.put(shardID+':'+accountID+'_STORAGE_'+storageID,accountData[storageID])
-
-                }
-
-
-            } else {
-
-                // Else - it's default EOA account
-
-                verificationThreadAtomicBatch.put(shardID+':'+accountID,accountData)
-
-                WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.native++
-
-                WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newUserAccountsNumber.native++
+                verificationThreadAtomicBatch.put(shardID+':'+accountID+'_STORAGE_'+storageID,accountData[storageID])
 
             }
- 
+
+
+        } else {
+
+            // Else - it's default EOA account
+
+            verificationThreadAtomicBatch.put(shardID+':'+accountID,accountData)
+
+            WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.native++
+
+            WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newUserAccountsNumber.native++
+
         }
 
+    
     }
 
 
