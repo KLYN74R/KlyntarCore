@@ -146,13 +146,9 @@ class VmState {
 
         let lowerCaseAddressAsStringWithout0x = address.buf.toString('hex');
 
-        let shardID = global.BLOCKCHAIN_GENESIS.SHARD
+        if(!this.isSandboxExecution){
 
-        let evmAccountData = await global.GET_EVM_ACCOUNT_DATA(lowerCaseAddressAsStringWithout0x);
-
-        if(!evmAccountData && !this.isSandboxExecution){
-
-            global.STATE_CACHE.put('EVM_ACCOUNT:'+lowerCaseAddressAsStringWithout0x,{shard:shardID,gas:0})
+            global.CREATED_EVM_ACCOUNTS.add('0x'+lowerCaseAddressAsStringWithout0x)
 
         }
 

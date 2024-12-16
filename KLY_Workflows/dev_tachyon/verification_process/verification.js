@@ -2092,6 +2092,47 @@ let verifyBlock = async(block,shardContext) => {
         WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[block.creator].hash = blockHash
 
 
+        // Iterate over newly created EVM accounts inside EVM to create addtional data for CAs / EOAs and track stats (created contracts, new accounts, etc.)
+
+        for (let lowerCaseEvmAddressWith0xPrefix of global.CREATED_EVM_ACCOUNTS) {
+
+            let account = await KLY_EVM.getAccount(lowerCaseEvmAddressWith0xPrefix)
+
+            let extendedInfo = await getFromState('EVM_ACCOUNT:'+lowerCaseEvmAddressWith0xPrefix)
+
+            if(account && !extendedInfo){
+
+                atomicBatch.put('EVM_ACCOUNT:'+lowerCaseEvmAddressWith0xPrefix,{shard:shardContext,gas:0})
+
+                if(account.codeHash.toString('hex') === 'c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470'){
+
+                    // It's EOA account
+                
+                    WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalUserAccountsNumber.evm++
+
+                    WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newUserAccountsNumber.evm++
+
+
+                } else {
+
+                    // It's contract
+                    
+                    WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalSmartContractsNumber.evm++
+
+                    WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.newSmartContractsNumber.evm++
+
+                    atomicBatch.put('EVM_CONTRACT_DATA:'+lowerCaseEvmAddressWith0xPrefix,{storageAbstractionLastPayment:currentEpochIndex})
+
+                }
+
+            }
+
+        }
+
+
+        global.CREATED_EVM_ACCOUNTS.clear()
+
+
         //___________________ Update the KLY-EVM ___________________
 
         // Update stateRoot
