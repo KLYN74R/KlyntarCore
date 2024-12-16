@@ -1732,10 +1732,10 @@ let verifyBlock = async(block,shardContext) => {
         //_________________________________________PREPARE THE KLY-EVM STATE____________________________________________
 
         
-        let currentKlyEvmContextMetadata = WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA[shardContext] // {nextBlockIndex,parentHash,timestamp}
+        let klyEvmMetadata = WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA[shardContext] // {nextBlockIndex,parentHash,timestamp}
 
         // Set the next block's parameters
-        KLY_EVM.setCurrentBlockParams(currentKlyEvmContextMetadata.nextBlockIndex,currentKlyEvmContextMetadata.timestamp,currentKlyEvmContextMetadata.parentHash)
+        KLY_EVM.setCurrentBlockParams(klyEvmMetadata.nextBlockIndex,klyEvmMetadata.timestamp,klyEvmMetadata.parentHash)
 
         // To change the state atomically
         let atomicBatch = BLOCKCHAIN_DATABASES.STATE.batch()
@@ -1906,20 +1906,20 @@ let verifyBlock = async(block,shardContext) => {
         WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
 
         // Increase block index
-        let nextIndex = BigInt(currentKlyEvmContextMetadata.nextBlockIndex)+BigInt(1)
+        let nextIndex = BigInt(klyEvmMetadata.nextBlockIndex)+BigInt(1)
 
-        currentKlyEvmContextMetadata.nextBlockIndex = Web3.utils.toHex(nextIndex.toString())
+        klyEvmMetadata.nextBlockIndex = Web3.utils.toHex(nextIndex.toString())
 
         // Store previous hash
         let currentHash = KLY_EVM.getCurrentBlock().hash()
     
-        currentKlyEvmContextMetadata.parentHash = currentHash.toString('hex')
+        klyEvmMetadata.parentHash = currentHash.toString('hex')
         
 
         // Imagine that it's 1 block per 1 second
-        let nextTimestamp = currentKlyEvmContextMetadata.timestamp+1
+        let nextTimestamp = klyEvmMetadata.timestamp+1
     
-        currentKlyEvmContextMetadata.timestamp = nextTimestamp
+        klyEvmMetadata.timestamp = nextTimestamp
         
 
         // Finally, store the block

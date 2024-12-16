@@ -773,7 +773,7 @@ export let VERIFIERS = {
 
         global.STATE_CACHE = GLOBAL_CACHES.STATE_CACHE
 
-        let evmResult = await KLY_EVM.callEVM(originShard,txWithPayload.payload)
+        let evmResult = await KLY_EVM.callEVM(txWithPayload.payload)
 
         if(evmResult && !evmResult.execResult.exceptionError){
           

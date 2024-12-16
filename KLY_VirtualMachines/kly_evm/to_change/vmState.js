@@ -146,36 +146,16 @@ class VmState {
 
         let lowerCaseAddressAsStringWithout0x = address.buf.toString('hex');
 
+        let shardID = global.BLOCKCHAIN_GENESIS.SHARD
 
-        // In case it's sandbox call to filter txs - we use choosen context. It might be own context or some other one
+        let evmAccountData = await global.GET_EVM_ACCOUNT_DATA(lowerCaseAddressAsStringWithout0x);
 
-        let evmExecutionContext = this.isSandboxExecution ? global.KLY_EVM_OPTIONS.bindContext : this.evmContext
+        if(!evmAccountData && !this.isSandboxExecution){
 
-        let addressWith0xPrefix = `0x${lowerCaseAddressAsStringWithout0x}`
-        
-        let bindedToShard = await global.GET_SHARD_ASSIGNMENT(lowerCaseAddressAsStringWithout0x);
-
-        // In case it's new contract and we don't have binding for it - bind to current context
-
-        if(!bindedToShard){
-
-            if(this.isSandboxExecution) bindedToShard = global.KLY_EVM_OPTIONS.bindContext
-
-            else {
-
-                global.STATE_CACHE.put('EVM_ACCOUNT:'+lowerCaseAddressAsStringWithout0x,{shard:this.evmContext,gas:0})
-
-                bindedToShard = this.evmContext    
-
-            }
+            global.STATE_CACHE.put('EVM_ACCOUNT:'+lowerCaseAddressAsStringWithout0x,{shard:shardID,gas:0})
 
         }
 
-        if(bindedToShard !== evmExecutionContext){
-
-            throw new Error(`Account ${addressWith0xPrefix} binded to shard ${bindedToShard}, but you try to change the state of it via tx on shard ${evmExecutionContext}`)
-
-        }
 
         this.touchedJournal.addJournalItem(address.buf.toString('hex'));
 
