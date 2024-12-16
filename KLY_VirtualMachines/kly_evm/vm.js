@@ -35,7 +35,6 @@ const {
     coinbase, // this address will be set as a block creator, but all the fees will be automatically redirected to KLY env and distributed among pool stakers
     hardfork,
     gasLimitForBlock,
-    bindContext,
     gasPriceInWeiAndHex,
     protocolVersionInHex,
     clientVersion,
@@ -52,7 +51,7 @@ const web3 = new Web3()
 //_________________________________________________________ GLOBALS POOL _________________________________________________________
 
 
-global.GET_SHARD_ASSIGNMENT = async addressAsString => {
+global.GET_EVM_ACCOUNT_DATA = async addressAsString => {
 
     let bindedToShard = await getFromState('EVM_ACCOUNT:'+addressAsString)
 
@@ -62,7 +61,7 @@ global.GET_SHARD_ASSIGNMENT = async addressAsString => {
 
 
 // Need this object inside EVM
-global.KLY_EVM_OPTIONS = { bindContext, coinbase, gasPriceInWeiAndHex, protocolVersionInHex, chainId, clientVersion, networkId}
+global.KLY_EVM_OPTIONS = { coinbase, gasPriceInWeiAndHex, protocolVersionInHex, chainId, clientVersion, networkId}
 
 
 /*
@@ -115,7 +114,7 @@ class KLY_EVM_CLASS {
      * @returns txResult 
      * 
      */
-    callEVM=async(evmContext,serializedEVMTxWith0x)=>{
+    callEVM = async serializedEVMTxWith0x => {
         
         let serializedEVMTxWithout0x = serializedEVMTxWith0x.slice(2) // delete 0x
         
@@ -151,7 +150,7 @@ class KLY_EVM_CLASS {
         tx.data = pureEvmCalldata
 
         
-        let txResult = await this.vm.runTx({tx,block,evmCaller,evmContext,accountAbstractionV2Data})
+        let txResult = await this.vm.runTx({tx,block,evmCaller,accountAbstractionV2Data})
 
 
         // We'll need full result to store logs and so on

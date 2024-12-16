@@ -30,7 +30,6 @@ async function runTx(opts) {
     // KLY-EVM extra data
     
     this.eei.isSandboxExecution = opts.isSandboxExecution
-    this.eei.evmContext = opts.evmContext
     this.eei.accountAbstractionV2Data = opts.accountAbstractionV2Data
 
     // create a reasonable default if no block is given
@@ -322,8 +321,6 @@ async function _runTx(opts) {
         versionedHashes,
 
         isSandboxExecution:opts.isSandboxExecution,
-        evmContext:opts.evmContext,
-    
         accountAbstractionV2Data:opts.accountAbstractionV2Data
 
     }));
