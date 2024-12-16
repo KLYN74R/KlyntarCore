@@ -1347,11 +1347,8 @@ let getPreparedTxsForParallelization = txsArray => {
 
         txCounter++
 
-        let possibleTouchedAccounts = null
+        let possibleTouchedAccounts = possibleTouchedAccounts = transaction?.payload?.touchedAccounts
 
-        if(transaction.type === 'EVM_CALL') possibleTouchedAccounts = getTouchedAccountsByEvmTx(transaction.payload)
-
-        else possibleTouchedAccounts = transaction?.payload?.touchedAccounts
 
         if(Array.isArray(possibleTouchedAccounts)){
 
@@ -1379,11 +1376,7 @@ let getPreparedTxsForParallelization = txsArray => {
 
     for(let transaction of txsArray){
 
-        let possibleTouchedAccounts = null
-
-        if(transaction.type === 'EVM_CALL') possibleTouchedAccounts = getTouchedAccountsByEvmTx(transaction.payload)
-
-        else possibleTouchedAccounts = transaction?.payload?.touchedAccounts
+        let possibleTouchedAccounts = transaction?.payload?.touchedAccounts
 
         if(Array.isArray(possibleTouchedAccounts)){
 
@@ -1413,11 +1406,7 @@ let getPreparedTxsForParallelization = txsArray => {
         let accountThatChangesMoreThanOnce
 
 
-        let possibleTouchedAccounts = null
-
-        if(transaction.type === 'EVM_CALL') possibleTouchedAccounts = getTouchedAccountsByEvmTx(transaction.payload)
-
-        else possibleTouchedAccounts = transaction?.payload?.touchedAccounts
+        let possibleTouchedAccounts = transaction?.payload?.touchedAccounts
 
 
         if(Array.isArray(possibleTouchedAccounts)){

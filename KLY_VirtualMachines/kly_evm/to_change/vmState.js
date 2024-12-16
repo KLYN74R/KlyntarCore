@@ -151,20 +151,7 @@ class VmState {
 
         let evmExecutionContext = this.isSandboxExecution ? global.KLY_EVM_OPTIONS.bindContext : this.evmContext
 
-        let accountInTouchedList = this.touchedAccounts ? this.touchedAccounts.includes(`0x${lowerCaseAddressAsStringWithout0x}`) : true
-
         let addressWith0xPrefix = `0x${lowerCaseAddressAsStringWithout0x}`
-
-        let itsSpecialAccount = addressWith0xPrefix === global.KLY_EVM_OPTIONS.coinbase || addressWith0xPrefix === global.KLY_EVM_OPTIONS.connectorAddress
-
-        if(itsSpecialAccount) accountInTouchedList = true
-
-        if(!accountInTouchedList){
-
-            throw new Error(`Account ${addressWith0xPrefix} not in .touchedAccounts`)
-
-        }
-
         
         let bindedToShard = await global.GET_SHARD_ASSIGNMENT(lowerCaseAddressAsStringWithout0x);
 
